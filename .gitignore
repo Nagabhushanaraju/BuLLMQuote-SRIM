@@ -216,3 +216,27 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node/React
+node_modules/
+.next/
+out/
+build/
+
+# Python/FastMCP
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+
+# Environment Variables & Secrets
+.env
+.env.local
+*.pem
+
+# Data & OS Files
+.DS_Store
+*.csv
+*.xlsx
+*.step
