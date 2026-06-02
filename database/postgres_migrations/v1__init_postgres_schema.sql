@@ -12,19 +12,16 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- This holds ALL available subskills.
 CREATE TABLE system_skills_registry (
     skill_code VARCHAR(50) PRIMARY KEY,       -- EXECUTION ID: e.g., 'M01.2_BOM_Normalize'
-    user_input JSONB NOT NULL,
     skill_name VARCHAR(100) NOT NULL,         -- UI LABEL: e.g., 'Normalize Through-Hole BOM'
-    
-    
-    -- [NEW] PRESENTATION: Groups subskills for the Accomplish UI accordions
     macro_category VARCHAR(100) NOT NULL,     -- UI GROUP: e.g., 'M01_Intake_and_Normalization'
+    mcp_tool_name VARCHAR(100) NOT NULL,      -- The exact name of the FastMCP tool OpenHarness routes to
     
-    -- The exact name of the FastMCP tool OpenHarness routes to
-    mcp_tool_name VARCHAR(100) NOT NULL,      -- e.g., 'normalize_bom_mcp'
+    -- [UPDATED] Holds the clean, flexible JSON input template specifying exact parameters for this tool
+    input_template JSONB NOT NULL DEFAULT '{}'::jsonb, 
     
-    -- If true, OpenHarness wakes the LLM. If false, strictly Python.
-    requires_llm BOOLEAN DEFAULT FALSE,       
-    
+    -- Retained configuration variables
+    -- user_input JSONB NOT NULL DEFAULT '{}'::jsonb, 
+    requires_llm BOOLEAN DEFAULT FALSE,       -- If true, OpenHarness wakes the LLM. If false, strictly Python.
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
