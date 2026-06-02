@@ -12,7 +12,9 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- This holds ALL available subskills.
 CREATE TABLE system_skills_registry (
     skill_code VARCHAR(50) PRIMARY KEY,       -- EXECUTION ID: e.g., 'M01.2_BOM_Normalize'
+    user_input JSONB NOT NULL,
     skill_name VARCHAR(100) NOT NULL,         -- UI LABEL: e.g., 'Normalize Through-Hole BOM'
+    
     
     -- [NEW] PRESENTATION: Groups subskills for the Accomplish UI accordions
     macro_category VARCHAR(100) NOT NULL,     -- UI GROUP: e.g., 'M01_Intake_and_Normalization'
