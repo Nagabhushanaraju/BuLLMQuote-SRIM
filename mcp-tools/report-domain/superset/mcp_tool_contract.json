@@ -120,6 +120,56 @@
           }
         }
       }
+    },
+
+    {
+      "name": "chart_embed_links",
+      "description": "Create individual charts and return a per-chart embed URL plus ready-to-paste iframe HTML for each. Use this instead of dashboard_generate when the client wants to place individual charts inside their own UI rather than open a full Superset dashboard.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["charts"],
+        "properties": {
+          "charts": {
+            "type": "array",
+            "minItems": 1,
+            "description": "One ChartSpec per chart. Same schema as dashboard_generate.",
+            "items": { "$ref": "#/$defs/ChartSpec" }
+          },
+          "dataset": {
+            "description": "Default dataset id or name for charts that do not override it.",
+            "oneOf": [{ "type": "integer" }, { "type": "string" }]
+          },
+          "width": {
+            "type": "integer",
+            "default": 600,
+            "description": "iframe width in pixels."
+          },
+          "height": {
+            "type": "integer",
+            "default": 400,
+            "description": "iframe height in pixels."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status":  { "type": "string", "enum": ["success", "error"] },
+          "count":   { "type": "integer", "description": "Number of charts returned." },
+          "charts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name":        { "type": "string" },
+                "chart_id":    { "type": "integer" },
+                "embed_url":   { "type": "string", "description": "Direct URL to the chart (no login needed via proxy)." },
+                "iframe_html": { "type": "string", "description": "Ready-to-paste <iframe> snippet." }
+              }
+            }
+          }
+        }
+      }
     }
   ],
 
