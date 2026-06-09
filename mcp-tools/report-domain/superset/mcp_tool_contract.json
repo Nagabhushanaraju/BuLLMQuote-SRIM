@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dashboard MCP Tool Contract",
+  "description": "The tool surface YOUR server exposes to client agents. They fill these schemas and call the tool; you process the call into Apache Superset charts + a dashboard and return a URL. Naming/auth conventions follow the superset.sh MCP doc format (snake_case tool names, OAuth 2.1 or 'Bearer sk_live_...' API key, JSON input/output).",
+
+  "tools": [
+    {
+      "name": "dashboard_generate",
+      "description": "Generate a dashboard from one or more chart specs and return a shareable URL. This is the primary tool — a client describes the charts it wants in plain structured fields and gets back a dashboard URL (plus optional embed credentials).",
+      "inputSchema": {
+        "type": "object",
+        "required": ["title", "charts"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Dashboard title shown to the end user."
+          },
+          "dataset": {
+            "description": "Default data source for charts that don't override it. Either a numeric Superset dataset id, or a name your server resolves to one.",
+            "oneOf": [
+              { "type": "integer" },
+              { "type": "string" }
+            ]
+          },
+          "charts": {
+            "type": "array",
+            "minItems": 1,
+            "description": "One ChartSpec per chart. See $defs/ChartSpec.",
+            "items": { "$ref": "#/$defs/ChartSpec" }
+          },
+          "layout_columns": {
+            "type": "integer",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Charts per row in the dashboard grid."
+          },
+          "embed": {
+            "type": "object",
+            "description": "If present, server enables embedding and returns embed_uuid + guest_token.",
+            "properties": {
+              "allowed_domains": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Domains permitted to iframe-embed the dashboard."
+              },
+              "row_level_security": {
+                "type": "array",
+                "description": "Optional RLS clauses scoping data per requesting user.",
+                "items": {
+                  "type": "object",
+                  "properties": { "clause": { "type": "string" } },
+                  "required": ["clause"]
+                }
+              }
+            },
+            "required": ["allowed_domains"]
+          }
+        }
+      },
+      "outputSchema": { "$ref": "#/$defs/DashboardResult" }
+    },
+
+    {
+      "name": "chart_data_query",
+      "description": "Run a single chart's query and return the raw rows WITHOUT building a dashboard. Use when the client wants to render the data itself instead of receiving a URL.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["chart"],
+        "properties": {
+          "chart": { "$ref": "#/$defs/ChartSpec" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Column names in row order."
+          },
+          "rows": {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "List of {column: value} records."
+          },
+          "rowcount": { "type": "integer" },
+          "query": { "type": "string", "description": "The SQL that was executed." }
+        }
+      }
+    },
+
+    {
+      "name": "datasets_list",
+      "description": "List the datasets available to query, so a client can discover valid `dataset` ids and the columns/metrics it can put in a ChartSpec.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Optional free-text filter on dataset name."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "columns": { "type": "array", "items": { "type": "string" } },
+                "metrics": { "type": "array", "items": { "type": "string" } },
+                "time_columns": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+
+  "$defs": {
+    "ChartSpec": {
+      "type": "object",
+      "title": "ChartSpec",
+      "description": "What a client fills to describe ONE chart. Deliberately flat and Superset-agnostic — no internal Superset params required.",
+      "required": ["name", "type", "metrics"],
+      "properties": {
+        "name": { "type": "string", "description": "Chart title." },
+        "type": {
+          "type": "string",
+          "description": "Chart type.",
+          "enum": [
+            "line", "bar", "area", "scatter", "smooth_line",
+            "table", "pivot_table",
+            "big_number", "big_number_trend",
+            "pie", "funnel", "gauge",
+            "histogram", "box_plot", "heatmap",
+            "treemap", "sunburst", "world_map",
+            "mixed_timeseries", "bubble"
+          ]
+        },
+        "dataset": {
+          "description": "Override the dashboard default dataset for this chart.",
+          "oneOf": [ { "type": "integer" }, { "type": "string" } ]
+        },
+        "metrics": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Measures to plot (e.g. 'total_amount', 'count'). Single-metric charts use the first."
+        },
+        "dimensions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Group-by / breakdown columns (e.g. 'region')."
+        },
+        "time_column": {
+          "type": "string",
+          "description": "Time axis column. Required for time-series chart types."
+        },
+        "time_range": {
+          "type": "string",
+          "description": "Human or Superset time expression.",
+          "examples": [
+            "Last 15 days", "Last 30 days", "Last week", "Last month",
+            "Last quarter", "Last year", "No filter",
+            "2024-01-01 : 2024-01-15"
+          ]
+        },
+        "time_grain": {
+          "type": "string",
+          "default": "P1D",
+          "description": "Bucket size (ISO8601 duration).",
+          "examples": ["PT1H", "P1D", "P1W", "P1M", "P1Y"]
+        },
+        "filters": {
+          "type": "array",
+          "description": "Simple filters; server converts to Superset filter syntax.",
+          "items": {
+            "type": "object",
+            "required": ["column", "op"],
+            "properties": {
+              "column": { "type": "string" },
+              "op": {
+                "type": "string",
+                "enum": ["IN", "NOT IN", "==", "!=", ">", "<", ">=", "<=",
+                         "LIKE", "ILIKE", "IS NULL", "IS NOT NULL"]
+              },
+              "value": { "description": "Value or list. Omit for IS NULL / IS NOT NULL." }
+            }
+          }
+        },
+        "row_limit": { "type": "integer", "default": 10000 },
+        "options": {
+          "type": "object",
+          "description": "Optional per-type extras: subheader (big_number), min/max (gauge), bins (histogram), rows/pivot_columns/aggregate (pivot_table), country_format (world_map)."
+        }
+      }
+    },
+
+    "DashboardResult": {
+      "type": "object",
+      "title": "DashboardResult",
+      "description": "What your server returns to the client after dashboard_generate.",
+      "required": ["dashboard_id", "dashboard_url"],
+      "properties": {
+        "dashboard_id": { "type": "integer" },
+        "dashboard_url": {
+          "type": "string",
+          "description": "Send THIS to the end user. Clicking renders the dashboard."
+        },
+        "standalone_url": {
+          "type": "string",
+          "description": "Chrome-less URL suited for iframe embedding."
+        },
+        "charts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" }
+            }
+          }
+        },
+        "embed_uuid": {
+          "type": "string",
+          "description": "Present only if embed.allowed_domains was supplied."
+        },
+        "guest_token": {
+          "type": "string",
+          "description": "Short-lived token for the Embedded SDK. Present only if embedding enabled."
+        }
+      }
+    }
+  }
+}

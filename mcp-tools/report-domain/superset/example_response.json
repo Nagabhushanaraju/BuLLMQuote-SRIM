@@ -1,0 +1,14 @@
+{
+  "_comment": "What your MCP server returns to the client after processing. Send dashboard_url to the end user.",
+  "dashboard_id": 42,
+  "dashboard_url": "https://your-superset-host/superset/dashboard/42/",
+  "standalone_url": "https://your-superset-host/superset/dashboard/42/?standalone=1",
+  "charts": [
+    { "id": 101, "name": "Revenue Trend" },
+    { "id": 102, "name": "Total Revenue" },
+    { "id": 103, "name": "Share by Region" },
+    { "id": 104, "name": "Orders Table" }
+  ],
+  "embed_uuid": "a1b2c3d4-0000-0000-0000-abcdef123456",
+  "guest_token": "eyJhbGciOiJIUzI1NiJ9.guest.token"
+}

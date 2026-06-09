@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChartSpec",
+  "description": "Flat object your caller populates. One per chart. Pass a list of these to generate_dashboard().",
+  "type": "object",
+  "required": ["name", "viz_type", "dataset_id"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Chart title shown on the dashboard."
+    },
+    "viz_type": {
+      "type": "string",
+      "description": "Friendly chart-type key.",
+      "enum": [
+        "line", "bar", "area", "scatter", "smooth_line",
+        "table", "pivot_table",
+        "big_number", "big_number_trend",
+        "pie", "funnel", "gauge",
+        "histogram", "box_plot", "heatmap",
+        "treemap", "sunburst", "world_map",
+        "mixed_timeseries", "bubble"
+      ]
+    },
+    "dataset_id": {
+      "type": "integer",
+      "description": "Superset dataset id the chart reads from."
+    },
+    "time_col": {
+      "type": "string",
+      "description": "Time/x-axis column. Required for time-series charts."
+    },
+    "time_range": {
+      "type": "string",
+      "description": "Superset time range expression.",
+      "examples": [
+        "Last 15 days", "Last 30 days", "Last week", "Last month",
+        "Last quarter", "Last year", "No filter",
+        "2024-01-01 : 2024-01-15",
+        "DATEADD(DATETIME('now'), -15, day) : now"
+      ]
+    },
+    "time_grain": {
+      "type": "string",
+      "description": "ISO8601 duration for time bucketing.",
+      "default": "P1D",
+      "examples": ["PT1H", "P1D", "P1W", "P1M", "P3M", "P1Y"]
+    },
+    "metrics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Metric names defined on the dataset. Single-metric charts (pie, big_number, gauge, funnel) use the first one."
+    },
+    "dimensions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Group-by columns (series breakdown)."
+    },
+    "columns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Raw columns. Used by histogram, and by table when query_mode='raw'."
+    },
+    "filters": {
+      "type": "array",
+      "description": "Simple filters, auto-converted to Superset adhoc + query filters.",
+      "items": {
+        "type": "object",
+        "required": ["col", "op"],
+        "properties": {
+          "col": { "type": "string" },
+          "op": {
+            "type": "string",
+            "enum": ["IN", "NOT IN", "==", "!=", ">", "<", ">=", "<=",
+                     "LIKE", "ILIKE", "IS NULL", "IS NOT NULL"]
+          },
+          "val": {
+            "description": "Value or list of values. Omit for IS NULL / IS NOT NULL."
+          }
+        }
+      }
+    },
+    "row_limit": { "type": "integer", "default": 10000 },
+    "color_scheme": { "type": "string", "default": "supersetColors" },
+    "query_mode": {
+      "type": "string",
+      "enum": ["aggregate", "raw"],
+      "description": "Table chart only."
+    },
+    "rows": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "pivot_table only: row dimensions."
+    },
+    "pivot_columns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "pivot_table only: column dimensions."
+    },
+    "aggregate": {
+      "type": "string",
+      "enum": ["Sum", "Average", "Count", "Min", "Max"],
+      "description": "pivot_table only.",
+      "default": "Sum"
+    },
+    "subheader": { "type": "string", "description": "big_number subtitle." },
+    "min_val": { "type": "number", "description": "gauge only." },
+    "max_val": { "type": "number", "description": "gauge only." },
+    "bins": { "type": "integer", "description": "histogram only.", "default": 20 },
+    "country_fieldtype": {
+      "type": "string",
+      "description": "world_map only: country code format.",
+      "enum": ["name", "cioc", "cca2", "cca3"],
+      "default": "cca3"
+    },
+    "force_refresh": {
+      "type": "boolean",
+      "default": false,
+      "description": "Bypass Superset query cache."
+    },
+    "extra": {
+      "type": "object",
+      "description": "Raw passthrough overrides merged into the generated params object. Use for any viz-specific knob not covered above."
+    }
+  }
+}

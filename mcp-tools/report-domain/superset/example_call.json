@@ -1,0 +1,48 @@
+{
+  "_comment": "Example of what a CLIENT sends to your MCP server's dashboard_generate tool. They never see Apache Superset internals.",
+  "tool": "dashboard_generate",
+  "arguments": {
+    "title": "Sales Overview",
+    "dataset": "orders",
+    "layout_columns": 2,
+    "charts": [
+      {
+        "name": "Revenue Trend",
+        "type": "line",
+        "metrics": ["total_amount"],
+        "dimensions": ["region"],
+        "time_column": "order_date",
+        "time_range": "Last 15 days"
+      },
+      {
+        "name": "Total Revenue",
+        "type": "big_number",
+        "metrics": ["total_amount"],
+        "time_range": "Last 15 days",
+        "options": { "subheader": "Last 15 days" }
+      },
+      {
+        "name": "Share by Region",
+        "type": "pie",
+        "metrics": ["total_amount"],
+        "dimensions": ["region"],
+        "time_range": "Last 15 days"
+      },
+      {
+        "name": "Orders Table",
+        "type": "table",
+        "metrics": ["total_amount", "count"],
+        "dimensions": ["region", "product"],
+        "time_column": "order_date",
+        "time_range": "Last 15 days",
+        "filters": [
+          { "column": "region", "op": "IN", "value": ["West", "East"] }
+        ]
+      }
+    ],
+    "embed": {
+      "allowed_domains": ["https://yourapp.com"],
+      "row_level_security": [ { "clause": "region = 'West'" } ]
+    }
+  }
+}
