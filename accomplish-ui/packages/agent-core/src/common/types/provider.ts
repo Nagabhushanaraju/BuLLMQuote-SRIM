@@ -1,0 +1,599 @@
+import type { ZaiRegion } from './providerSettings.js';
+
+export const MINIMAX_DEFAULT_BASE_URL = 'https://api.minimax.io/v1';
+
+export const ZAI_ENDPOINTS: Record<ZaiRegion, string> = {
+  china: 'https://open.bigmodel.cn/api/paas/v4',
+  international: 'https://api.z.ai/api/coding/paas/v4',
+};
+
+export type ProviderType =
+  | 'anthropic'
+  | 'openai'
+  | 'openrouter'
+  | 'google'
+  | 'xai'
+  | 'ollama'
+  | 'deepseek'
+  | 'moonshot'
+  | 'zai'
+  | 'azure-foundry'
+  | 'custom'
+  | 'bedrock'
+  | 'litellm'
+  | 'minimax'
+  | 'lmstudio'
+  | 'vertex'
+  | 'huggingface-local'
+  | 'nebius'
+  | 'together'
+  | 'fireworks'
+  | 'groq'
+  | 'venice'
+  | 'nim'
+  | 'copilot'
+  | 'accomplish-ai';
+
+export type ApiKeyProvider =
+  | 'anthropic'
+  | 'openai'
+  | 'openrouter'
+  | 'google'
+  | 'xai'
+  | 'deepseek'
+  | 'moonshot'
+  | 'zai'
+  | 'azure-foundry'
+  | 'custom'
+  | 'bedrock'
+  | 'litellm'
+  | 'minimax'
+  | 'lmstudio'
+  | 'vertex'
+  | 'nebius'
+  | 'together'
+  | 'fireworks'
+  | 'groq'
+  | 'venice'
+  | 'nim'
+  | 'elevenlabs'
+  | 'aws-agentcore'
+  | 'browserbase'
+  | 'steel';
+
+/**
+ * Providers that accept API key storage via the setApiKey IPC handler.
+ * This is the allowlist of providers that can have their API keys stored.
+ * Uses Set<string> to allow runtime checking of untrusted input strings.
+ */
+export const ALLOWED_API_KEY_PROVIDERS: ReadonlySet<string> = new Set<string>([
+  'anthropic',
+  'openai',
+  'openrouter',
+  'google',
+  'xai',
+  'deepseek',
+  'moonshot',
+  'zai',
+  'azure-foundry',
+  'custom',
+  'bedrock',
+  'litellm',
+  'minimax',
+  'lmstudio',
+  'vertex',
+  'nebius',
+  'together',
+  'fireworks',
+  'groq',
+  'venice',
+  'nim',
+  'elevenlabs',
+  'aws-agentcore',
+  'browserbase',
+  'steel',
+]);
+
+/**
+ * Providers that use standard OpenAI-compatible API key validation.
+ * These providers can be validated using a simple test request to their API.
+ * Uses Set<string> to allow runtime checking of untrusted input strings.
+ */
+export const STANDARD_VALIDATION_PROVIDERS: ReadonlySet<string> = new Set<string>([
+  'anthropic',
+  'openai',
+  'google',
+  'xai',
+  'deepseek',
+  'openrouter',
+  'moonshot',
+  'zai',
+  'minimax',
+  'nebius',
+  'together',
+  'fireworks',
+  'groq',
+  'venice',
+]);
+
+export interface ModelsEndpointConfig {
+  /** Full URL to the models listing endpoint */
+  url: string;
+  /** How the API key is passed in the request */
+  authStyle: 'bearer' | 'x-api-key' | 'query-param';
+  /** Additional headers to include (e.g., anthropic-version) */
+  extraHeaders?: Record<string, string>;
+  /** Which response shape parser to use */
+  responseFormat: 'openai' | 'anthropic' | 'google';
+  /** Prefix prepended to model IDs (e.g., 'anthropic/') */
+  modelIdPrefix?: string;
+  /** Optional regex to filter model IDs */
+  modelFilter?: RegExp;
+}
+
+export interface ProviderConfig {
+  id: ProviderType;
+  name: string;
+  models: ModelConfig[];
+  requiresApiKey: boolean;
+  apiKeyEnvVar?: string;
+  baseUrl?: string;
+  /** Auto-selected model when connecting (e.g., 'anthropic/claude-opus-4-6') */
+  defaultModelId?: string;
+  /** Config for dynamically fetching models from the provider API */
+  modelsEndpoint?: ModelsEndpointConfig;
+  /** Whether the user can customize the base URL for this provider */
+  editableBaseUrl?: boolean;
+}
+
+export interface ModelConfig {
+  id: string;
+  displayName: string;
+  provider: ProviderType;
+  fullId: string;
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  supportsVision?: boolean;
+}
+
+export interface SelectedModel {
+  provider: ProviderType;
+  model: string;
+  baseUrl?: string;
+  deploymentName?: string;
+}
+
+export interface OllamaModelInfo {
+  id: string;
+  displayName: string;
+  size: number;
+  toolSupport?: 'supported' | 'unsupported' | 'unknown';
+}
+
+export interface OllamaConfig {
+  baseUrl: string;
+  enabled: boolean;
+  lastValidated?: number;
+  models?: OllamaModelInfo[];
+}
+
+export interface AzureFoundryConfig {
+  baseUrl: string;
+  deploymentName: string;
+  authType: 'api-key' | 'entra-id';
+  enabled: boolean;
+  lastValidated?: number;
+}
+
+export interface LiteLLMModel {
+  id: string;
+  name: string;
+  provider: string;
+  contextLength: number;
+}
+
+export interface LiteLLMConfig {
+  baseUrl: string;
+  enabled: boolean;
+  lastValidated?: number;
+  models?: LiteLLMModel[];
+}
+
+export interface LMStudioModel {
+  id: string;
+  name: string;
+  toolSupport: 'supported' | 'unsupported' | 'unknown';
+}
+
+export interface LMStudioConfig {
+  baseUrl: string;
+  enabled: boolean;
+  lastValidated?: number;
+  models?: LMStudioModel[];
+}
+
+export interface HuggingFaceLocalModelInfo {
+  id: string;
+  displayName: string;
+  sizeBytes?: number;
+  downloaded: boolean;
+}
+
+export interface HuggingFaceLocalConfig {
+  selectedModelId: string | null;
+  serverPort: number | null;
+  enabled: boolean;
+  /** ONNX quantization level. null falls back to automatic (q4 → fp32). */
+  quantization: 'q4' | 'fp32' | null;
+  /** Preferred execution device. null means automatic selection. */
+  devicePreference: 'auto' | 'cpu' | 'cuda' | 'webgpu' | null;
+}
+
+export const DEFAULT_PROVIDERS: ProviderConfig[] = [
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'ANTHROPIC_API_KEY',
+    defaultModelId: 'anthropic/claude-opus-4-5',
+    modelsEndpoint: {
+      url: 'https://api.anthropic.com/v1/models',
+      authStyle: 'x-api-key',
+      extraHeaders: { 'anthropic-version': '2023-06-01' },
+      responseFormat: 'anthropic',
+      modelIdPrefix: 'anthropic/',
+      modelFilter: /^claude-/,
+    },
+    models: [
+      {
+        id: 'claude-opus-4-8',
+        displayName: 'Claude Opus 4.8',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-opus-4-8',
+        contextWindow: 200_000,
+        maxOutputTokens: 32_000,
+      },
+      {
+        id: 'claude-sonnet-4-6',
+        displayName: 'Claude Sonnet 4.6',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-sonnet-4-6',
+        contextWindow: 200_000,
+        maxOutputTokens: 64_000,
+      },
+      {
+        id: 'claude-haiku-4-5',
+        displayName: 'Claude Haiku 4.5',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-haiku-4-5',
+        contextWindow: 200_000,
+        maxOutputTokens: 8_096,
+      },
+      {
+        id: 'claude-opus-4-5',
+        displayName: 'Claude Opus 4.5',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-opus-4-5',
+        contextWindow: 200_000,
+        maxOutputTokens: 32_000,
+      },
+      {
+        id: 'claude-3-7-sonnet-20250219',
+        displayName: 'Claude 3.7 Sonnet',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-3-7-sonnet-20250219',
+        contextWindow: 200_000,
+        maxOutputTokens: 64_000,
+      },
+      {
+        id: 'claude-3-5-sonnet-20241022',
+        displayName: 'Claude 3.5 Sonnet',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-3-5-sonnet-20241022',
+        contextWindow: 200_000,
+        maxOutputTokens: 8_096,
+      },
+      {
+        id: 'claude-3-5-haiku-20241022',
+        displayName: 'Claude 3.5 Haiku',
+        provider: 'anthropic',
+        fullId: 'anthropic/claude-3-5-haiku-20241022',
+        contextWindow: 200_000,
+        maxOutputTokens: 8_096,
+      },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'OPENAI_API_KEY',
+    defaultModelId: 'openai/gpt-5.2',
+    modelsEndpoint: {
+      url: 'https://api.openai.com/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'openai/',
+      modelFilter: /^gpt-|^o[134]|^chatgpt-/,
+    },
+    models: [],
+  },
+  {
+    id: 'google',
+    name: 'Google AI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'GOOGLE_GENERATIVE_AI_API_KEY',
+    defaultModelId: 'google/gemini-3-pro-preview',
+    modelsEndpoint: {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models',
+      authStyle: 'query-param',
+      responseFormat: 'google',
+      modelIdPrefix: 'google/',
+    },
+    models: [],
+  },
+  {
+    id: 'xai',
+    name: 'xAI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'XAI_API_KEY',
+    baseUrl: 'https://api.x.ai',
+    defaultModelId: 'xai/grok-4',
+    modelsEndpoint: {
+      url: 'https://api.x.ai/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'xai/',
+    },
+    models: [],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'DEEPSEEK_API_KEY',
+    baseUrl: 'https://api.deepseek.com',
+    defaultModelId: 'deepseek/deepseek-chat',
+    modelsEndpoint: {
+      url: 'https://api.deepseek.com/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'deepseek/',
+    },
+    models: [],
+  },
+  {
+    id: 'moonshot',
+    name: 'Moonshot AI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'MOONSHOT_API_KEY',
+    baseUrl: 'https://api.moonshot.ai/v1',
+    defaultModelId: 'moonshot/kimi-k2.5',
+    modelsEndpoint: {
+      url: 'https://api.moonshot.ai/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'moonshot/',
+    },
+    models: [],
+  },
+  {
+    id: 'zai',
+    name: 'Z.AI Coding Plan',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'ZAI_API_KEY',
+    baseUrl: 'https://open.bigmodel.cn',
+    defaultModelId: 'zai/glm-4.7-flashx',
+    modelsEndpoint: {
+      url: 'https://open.bigmodel.cn/api/paas/v4/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'zai/',
+    },
+    models: [
+      {
+        id: 'glm-5',
+        displayName: 'GLM-5',
+        provider: 'zai',
+        fullId: 'zai/glm-5',
+        contextWindow: 128000,
+        supportsVision: false,
+      },
+    ],
+  },
+  {
+    id: 'bedrock',
+    name: 'Amazon Bedrock',
+    requiresApiKey: false,
+    models: [],
+  },
+  {
+    id: 'vertex',
+    name: 'Google Vertex AI',
+    requiresApiKey: false,
+    models: [],
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'MINIMAX_API_KEY',
+    baseUrl: MINIMAX_DEFAULT_BASE_URL,
+    editableBaseUrl: true,
+    defaultModelId: 'minimax/MiniMax-M2.5',
+    models: [
+      {
+        id: 'MiniMax-M2',
+        displayName: 'MiniMax M2',
+        provider: 'minimax',
+        fullId: 'minimax/MiniMax-M2',
+        contextWindow: 196608,
+        supportsVision: false,
+      },
+      {
+        id: 'MiniMax-M2.1',
+        displayName: 'MiniMax M2.1',
+        provider: 'minimax',
+        fullId: 'minimax/MiniMax-M2.1',
+        contextWindow: 204800,
+        supportsVision: false,
+      },
+      {
+        id: 'MiniMax-M2.1-highspeed',
+        displayName: 'MiniMax M2.1 Highspeed',
+        provider: 'minimax',
+        fullId: 'minimax/MiniMax-M2.1-highspeed',
+        contextWindow: 204800,
+        supportsVision: false,
+      },
+      {
+        id: 'MiniMax-M2.5',
+        displayName: 'MiniMax M2.5',
+        provider: 'minimax',
+        fullId: 'minimax/MiniMax-M2.5',
+        contextWindow: 204800,
+        supportsVision: false,
+      },
+      {
+        id: 'MiniMax-M2.5-highspeed',
+        displayName: 'MiniMax M2.5 Highspeed',
+        provider: 'minimax',
+        fullId: 'minimax/MiniMax-M2.5-highspeed',
+        contextWindow: 204800,
+        supportsVision: false,
+      },
+    ],
+  },
+  {
+    id: 'nebius',
+    name: 'Nebius AI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'NEBIUS_API_KEY',
+    baseUrl: 'https://api.studio.nebius.ai/v1',
+    modelsEndpoint: {
+      url: 'https://api.studio.nebius.ai/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'nebius/',
+    },
+    models: [],
+    defaultModelId: 'nebius/meta-llama/Meta-Llama-3.1-70B-Instruct',
+  },
+  {
+    id: 'together',
+    name: 'Together AI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'TOGETHER_API_KEY',
+    baseUrl: 'https://api.together.xyz/v1',
+    modelsEndpoint: {
+      url: 'https://api.together.xyz/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'together/',
+    },
+    models: [],
+    defaultModelId: 'together/meta-llama/Llama-3-70b-chat-hf',
+  },
+  {
+    id: 'fireworks',
+    name: 'Fireworks AI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'FIREWORKS_API_KEY',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    modelsEndpoint: {
+      url: 'https://api.fireworks.ai/inference/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'fireworks/',
+    },
+    models: [],
+    defaultModelId: 'fireworks/accounts/fireworks/models/llama-v3-70b-instruct',
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'GROQ_API_KEY',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    modelsEndpoint: {
+      url: 'https://api.groq.com/openai/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'groq/',
+    },
+    models: [],
+    defaultModelId: 'groq/llama3-70b-8192',
+  },
+  {
+    id: 'venice',
+    name: 'Venice AI',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'VENICE_API_KEY',
+    baseUrl: 'https://api.venice.ai/api/v1',
+    defaultModelId: 'venice/llama-3.3-70b',
+    modelsEndpoint: {
+      url: 'https://api.venice.ai/api/v1/models',
+      authStyle: 'bearer',
+      responseFormat: 'openai',
+      modelIdPrefix: 'venice/',
+    },
+    models: [],
+  },
+  {
+    id: 'copilot',
+    name: 'GitHub Copilot',
+    requiresApiKey: false,
+    defaultModelId: 'copilot/gpt-4o',
+    models: [],
+  },
+  {
+    id: 'accomplish-ai',
+    name: 'Accomplish AI',
+    requiresApiKey: false,
+    defaultModelId: 'accomplish-ai/accomplish-free',
+    models: [
+      {
+        id: 'accomplish-free',
+        displayName: 'Accomplish',
+        provider: 'accomplish-ai',
+        fullId: 'accomplish-ai/accomplish-free',
+        contextWindow: 128_000,
+        maxOutputTokens: 32_000,
+        supportsVision: true,
+      },
+    ],
+  },
+];
+
+export const NIM_DEFAULT_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+
+// GitHub Copilot provider configuration
+export const COPILOT_MODELS: Array<{ id: string; displayName: string }> = [
+  { id: 'copilot/gpt-4o', displayName: 'GPT-4o' },
+  { id: 'copilot/gpt-4o-mini', displayName: 'GPT-4o mini' },
+  { id: 'copilot/o1', displayName: 'o1' },
+  { id: 'copilot/o1-mini', displayName: 'o1 mini' },
+  { id: 'copilot/o3-mini', displayName: 'o3 mini' },
+  { id: 'copilot/claude-3.5-sonnet', displayName: 'Claude 3.5 Sonnet' },
+  { id: 'copilot/claude-3.7-sonnet', displayName: 'Claude 3.7 Sonnet' },
+  { id: 'copilot/gemini-2.0-flash-001', displayName: 'Gemini 2.0 Flash' },
+];
+
+export interface NimModel {
+  id: string;
+  name: string;
+  provider: string;
+  contextLength: number;
+}
+
+export interface NimConfig {
+  baseUrl: string;
+  enabled: boolean;
+  lastValidated?: number;
+  models?: NimModel[];
+}
+
+export const DEFAULT_MODEL: SelectedModel = {
+  provider: 'anthropic',
+  model: 'anthropic/claude-opus-4-5',
+};

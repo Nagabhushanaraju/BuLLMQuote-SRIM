@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    // TODO(ts7): baseUrl is deprecated in TS6 and will be removed in TS7.
+    // It is currently required as an anchor for `paths` aliases; migrate to rootDirs or bundler-native
+    // aliases when TS7 removes support. Track: https://github.com/microsoft/TypeScript/issues/57485
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@accomplish_ai/agent-core": ["../../packages/agent-core/src/index.ts"],
+      "@accomplish_ai/agent-core/*": ["../../packages/agent-core/src/*"]
+    }
+  },
+  "include": ["src/**/*", "../../packages/agent-core/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

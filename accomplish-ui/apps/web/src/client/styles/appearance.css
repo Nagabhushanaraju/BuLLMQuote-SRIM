@@ -1,0 +1,133 @@
+/*
+ * Appearance customization layer — driven by data-* attributes on <html>
+ * (set by lib/appearance.ts). Overrides the shadcn HSL tokens from globals.css.
+ * Each accent has a light variant (:root-level) and a dark variant (.dark ...)
+ * because the brand color needs higher lightness on dark backgrounds.
+ */
+
+/* ── Accent palettes ─────────────────────────────────────────────── */
+/* green = default brand tokens; listed for completeness/override-safety. */
+[data-accent='green'] {
+  --primary: 123 30% 20%;
+  --ring: 20 25% 33%;
+  --provider-accent: 123 30% 30%;
+}
+.dark[data-accent='green'] {
+  --primary: 123 30% 45%;
+  --ring: 20 25% 55%;
+  --provider-accent: 123 30% 45%;
+}
+
+[data-accent='blue'] {
+  --primary: 212 72% 40%;
+  --ring: 212 60% 45%;
+  --provider-accent: 212 72% 42%;
+}
+.dark[data-accent='blue'] {
+  --primary: 212 70% 56%;
+  --ring: 212 60% 62%;
+  --provider-accent: 212 70% 56%;
+}
+
+[data-accent='violet'] {
+  --primary: 262 55% 45%;
+  --ring: 262 50% 50%;
+  --provider-accent: 262 55% 47%;
+}
+.dark[data-accent='violet'] {
+  --primary: 262 65% 65%;
+  --ring: 262 55% 68%;
+  --provider-accent: 262 65% 65%;
+}
+
+[data-accent='amber'] {
+  --primary: 35 85% 38%;
+  --ring: 35 70% 42%;
+  --provider-accent: 35 85% 40%;
+}
+.dark[data-accent='amber'] {
+  --primary: 35 90% 55%;
+  --ring: 35 80% 58%;
+  --provider-accent: 35 90% 55%;
+}
+
+[data-accent='rose'] {
+  --primary: 346 65% 45%;
+  --ring: 346 55% 50%;
+  --provider-accent: 346 65% 47%;
+}
+.dark[data-accent='rose'] {
+  --primary: 346 75% 62%;
+  --ring: 346 65% 65%;
+  --provider-accent: 346 75% 62%;
+}
+
+/* ── "Dim" (medium) — a softer dark, between light and full dark ──── */
+.dark[data-contrast='dim'] {
+  --background: 0 0% 16%;
+  --card: 0 0% 19%;
+  --popover: 0 0% 19%;
+  --muted: 0 0% 23%;
+  --accent: 0 0% 24%;
+  --border: 0 0% 28%;
+  --input: 0 0% 30%;
+}
+
+/* ── Animations off ──────────────────────────────────────────────── */
+[data-motion='off'] *,
+[data-motion='off'] *::before,
+[data-motion='off'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ── Decorative background patterns ──────────────────────────────── */
+/* Painted on a fixed, full-viewport layer behind all content. */
+[data-pattern='stripes'] body::before,
+[data-pattern='dots'] body::before,
+[data-pattern='grid'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+[data-pattern='stripes'] body::before {
+  background-image: repeating-linear-gradient(
+    45deg,
+    hsl(var(--foreground) / 0.04) 0,
+    hsl(var(--foreground) / 0.04) 2px,
+    transparent 2px,
+    transparent 12px
+  );
+}
+[data-pattern='dots'] body::before {
+  background-image: radial-gradient(hsl(var(--foreground) / 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+[data-pattern='grid'] body::before {
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* ── Reusable hover micro-interaction ────────────────────────────── */
+/* Opt-in: add `hover-lift` to a card/button for a subtle raise on hover.
+   Honors the Animations toggle (neutralised under [data-motion='off']). */
+.hover-lift {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+  will-change: transform;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -8px hsl(var(--foreground) / 0.18);
+}
+.hover-lift:active {
+  transform: translateY(0);
+}

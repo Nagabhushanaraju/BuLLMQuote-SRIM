@@ -1,0 +1,56 @@
+# ==========================================
+# Dependencies (Never commit node_modules)
+# ==========================================
+node_modules/
+**/node_modules/
+
+# ==========================================
+# Local Logs & Diagnostics (From image_3c8406.png)
+# ==========================================
+*.log
+logs
+*.log*
+tmp-daemon-dev.err.log
+tmp-daemon-dev.log
+tmp-web-dev.err.log
+tmp-web-dev.log
+VERIFY_RESULTS.txt
+
+# ==========================================
+# Build Outputs & Bundler Caches
+# ==========================================
+# Monorepo/Turbo/Nx build caches
+.turbo/
+.cache/
+
+# Common frontend build folders (inside apps/ and packages/)
+dist/
+build/
+.next/
+out/
+.nuxt/
+.output/
+
+# ==========================================
+# Environment Secrets & Local Overrides
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env.json
+
+# ==========================================
+# OS & IDE Specific Files
+# ==========================================
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Note: We keep .devcontainer/ as it is seen in image_3c843d.png 
+# and explicitly meant for shared team environment setups.

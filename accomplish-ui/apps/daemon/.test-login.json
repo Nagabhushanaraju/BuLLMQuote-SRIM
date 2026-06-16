@@ -1,0 +1,10 @@
+{
+  "_comment": "DEV/TESTING ONLY login credentials for the SRIM web build. These unlock a LOCAL test-login bypass in apps/daemon/src/test-login.ts and are NOT real NetBird credentials. The backend ignores this file in production (NODE_ENV=production) or when ACCOMPLISH_DISABLE_TEST_LOGIN=1. Override via env: ACCOMPLISH_TEST_LOGIN_TOKEN / ACCOMPLISH_TEST_LOGIN_USER / ACCOMPLISH_TEST_LOGIN_PASS.",
+  "token": "srim-dev-token",
+  "username": "digibull",
+  "password": "srim-test-2026",
+  "user": {
+    "name": "DigiBull Tester",
+    "email": "tester@digibull.ai"
+  }
+}
