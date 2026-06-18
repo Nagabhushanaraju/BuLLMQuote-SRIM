@@ -39,6 +39,22 @@ import { LegacyImportService } from './legacy-import-service.js';
 import { GoogleAccountService } from './google-account-service.js';
 import { SkillsService } from './skills-service.js';
 import { log } from './logger.js';
+import pg from 'pg';
+export const pgPool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL || 'postgres://postgres:DigiBull@192.168.29.155:5432/logic_db',
+});
+
+pgPool.query('SELECT NOW()')
+  .then(() => console.log('✅ [Postgres Connection Test] Handshake verified! Database is reachable.'))
+  .catch((err) => console.error('❌ [Postgres Connection Test] Handshake failed on startup:', err.message));
+
+pgPool.on('connect', () => {
+  console.log('[Postgres] Connected to database successfully');
+});
+
+pgPool.on('error', (err) => {
+  console.error('[Postgres] Unexpected database pool error:', err);
+});
 
 import './auth-server.js';
 
@@ -255,17 +271,8 @@ async function main(): Promise<void> {
     bundledSkillsPath,
   });
 
-  // Ensure the default workspace exists and the active-workspace pointer is
-  // valid BEFORE registering any workspace RPCs. Ports the bootstrap from
-  // desktop's `workspaceManager.initialize()`; migrations only create the
-  // tables, so without this a fresh profile would answer `workspace.list`
-  // with `[]` and `workspace.getActive` with `null`. Idempotent.
   workspaceService.ensureInitialized();
 
-  // Milestone 4 — initialize SkillsService (reads bundled + user skill
-  // directories from disk, reconciles with the DB) and restart Google
-  // account refresh timers for every previously-connected account. Both
-  // are crash-safe: idempotent and tolerant of partial / corrupted state.
   try {
     await skillsService.initialize();
   } catch (err) {
@@ -274,6 +281,50 @@ async function main(): Promise<void> {
     );
   }
   googleAccountService.startAllTimers();
+
+  // ─── INSERT POSTGRES SYNC LISTENER HERE ──────────────────────────────────
+  skillsService.on('skills.changed', async (payload: { kind: string; skillId?: string; enabled?: boolean }) => {
+    if (payload.kind === 'updated' && payload.skillId !== undefined) {
+      try {
+        log.info(`[Postgres Sync] Modifying routing sequence for skill: ${payload.skillId} (Enabled: ${payload.enabled})`);
+        
+        // Target profiles requiring updates. For this execution, we update a target profile named 'Default Profile'
+        // If your application requires updating all profiles or specific active profiles, adjust the WHERE clause accordingly.
+        const targetProfileName = 'Standard_BOM_Flow'; 
+
+        if (payload.enabled) {
+          // 1. ADD ELEMENT: Convert to jsonb array and use || operator. 
+          // We wrap it in a CASE statement to ensure we don't push a duplicate string if it exists.
+          await pgPool.query(
+            `UPDATE quote_routing_profiles
+             SET 
+               routing_sequence = CASE 
+                 WHEN routing_sequence @> jsonb_build_array($1::text) THEN routing_sequence
+                 ELSE routing_sequence || jsonb_build_array($1::text)
+               END,
+               updated_at = NOW()
+             WHERE profile_name = $2;`,
+            [payload.skillId, targetProfileName]
+          );
+        } else {
+          // 2. REMOVE ELEMENT: Use the jsonb '-' operator to drop the string matching the skillId from the array.
+          await pgPool.query(
+            `UPDATE quote_routing_profiles
+             SET 
+               routing_sequence = routing_sequence - $1::text,
+               updated_at = NOW()
+             WHERE profile_name = $2;`,
+            [payload.skillId, targetProfileName]
+          );
+        }
+        
+        log.info(`[Postgres Sync] Successfully updated routing_sequence array for ${payload.skillId}`);
+      } catch (error) {
+        log.error(`[Postgres Sync] Failed to update quote_routing_profiles array for ${payload.skillId}:`, error);
+      }
+    }
+  });
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Register RPC methods and task event forwarding
   const routeServices = {
