@@ -85,15 +85,18 @@ export class SkillsService extends EventEmitter {
 
   // ─── Writes (emit skills.changed) ─────────────────────────────────────
 
+  // ─── Writes (emit skills.changed) ─────────────────────────────────────
+
   setEnabled(skillId: string, enabled: boolean): void {
     this.inner.setSkillEnabled(skillId, enabled);
-    this.emitChange('updated');
+    // Explicitly pass down the skill details in the event payload
+    this.emit(SKILLS_CHANGED, { kind: 'updated', skillId, enabled });
   }
 
   async addFromPath(sourcePath: string): Promise<Skill | null> {
     const skill = await this.inner.addSkill(sourcePath);
     if (skill) {
-      this.emitChange('added');
+      this.emitChange('added', skill.id);
     }
     return skill;
   }
@@ -112,8 +115,12 @@ export class SkillsService extends EventEmitter {
     return skills;
   }
 
-  private emitChange(kind: SkillsChangedPayload['kind']): void {
-    this.emit(SKILLS_CHANGED, { kind } satisfies SkillsChangedPayload);
+  private emitChange(
+    kind: SkillsChangedPayload['kind'], 
+    skillId?: string, 
+    enabled?: boolean
+  ): void {
+    this.emit(SKILLS_CHANGED, { kind, skillId, enabled } satisfies SkillsChangedPayload);
   }
 }
 

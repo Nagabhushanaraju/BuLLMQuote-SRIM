@@ -1,6 +1,3 @@
-<p align="center">
-  <strong>English</strong> | <a href="README.zh-CN.md">中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.ru.md">Русский</a> | <a href="README.es.md">Español</a> | <a href="README.tr.md">Türkçe</a> | <a href="README.ar.md">العربية</a> | <a href="README.id.md">Bahasa Indonesia</a> | <a href="README.ta.md">தமிழ்</a> | <a href="README.hi.md">हिन्दी</a>
-</p>
 
 <p align="center">
   <img src="docs/banner.svg" alt="Accomplish - Open source AI desktop agent that automates file management, document creation, and browser tasks with your own AI API keys" width="100%" />
@@ -56,63 +53,6 @@ Accomplish is an open source AI desktop agent that automates file management, do
 <tr>
 <td width="50%" valign="top" align="center">
 
-### 🖥️ It runs locally
-
-<div align="left">
-
-- Your files stay on your machine
-- You decide which folders it can touch
-- Nothing gets sent to Accomplish (or anyone else)
-
-</div>
-
-</td>
-<td width="50%" valign="top" align="center">
-
-### 🔑 You bring your own AI
-
-<div align="left">
-
-- Use your own API key (OpenAI, Anthropic, etc.)
-- Or run with [Ollama](https://ollama.com) (no API key needed)
-- No subscription, no upsell
-- It's a tool—not a service
-
-</div>
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top" align="center">
-
-### 📖 It's open source
-
-<div align="left">
-
-- Every line of code is on GitHub
-- MIT licensed
-- Change it, fork it, break it, fix it
-
-</div>
-
-</td>
-<td width="50%" valign="top" align="center">
-
-### ⚡ It acts, not just chats
-
-<div align="left">
-
-- File management
-- Document creation
-- Custom automations
-- Skill learning
-
-</div>
-
-</td>
-</tr>
-</table>
-
 <br />
 
 ---
@@ -123,10 +63,10 @@ Accomplish is an open source AI desktop agent that automates file management, do
 
 |                                                                    |                                                                      |                                                                         |
 | :----------------------------------------------------------------- | :------------------------------------------------------------------- | :---------------------------------------------------------------------- |
-| **📁 File Management**                                             | **✍️ Document Writing**                                              | **🔗 Tool Connections**                                                 |
+| **📁 File Management**                                       | **✍️ Document Writing**                                      | **🔗 Tool Connections**                                           |
 | Sort, rename, and move files based on content or rules you give it | Prompt it to write, summarize, or rewrite documents                  | Works with Notion, Google Drive, Dropbox, and more (through local APIs) |
 |                                                                    |                                                                      |                                                                         |
-| **⚙️ Custom Skills**                                               | **🛡️ Full Control**                                                  |                                                                         |
+| **⚙️ Custom Skills**                                       | **🛡️ Full Control**                                          |                                                                         |
 | Define repeatable workflows, save them as skills                   | You approve every action. You can see logs. You can stop it anytime. |                                                                         |
 
 <br />
@@ -185,12 +125,12 @@ Accomplish runs locally on your machine. Your files stay on your device, and you
 
 > **Takes 2 minutes to set up.**
 
-| Step  | Action              | Details                                                                                                           |
-| :---: | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **1** | **Install the App** | Download the DMG and drag it into Applications                                                                    |
+|    Step    | Action                    | Details                                                                                                            |
+| :---------: | ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **1** | **Install the App** | Download the DMG and drag it into Applications                                                                     |
 | **2** | **Connect Your AI** | Use your own Google, OpenAI, Anthropic (or other) API key — or sign in with ChatGPT (Plus/Pro). No subscriptions. |
-| **3** | **Give It Access**  | Choose which folders it can see. You stay in control.                                                             |
-| **4** | **Start Working**   | Ask it to summarize a doc, clean a folder, or create a report. You approve everything.                            |
+| **3** | **Give It Access**  | Choose which folders it can see. You stay in control.                                                              |
+| **4** | **Start Working**   | Ask it to summarize a doc, clean a folder, or create a report. You approve everything.                             |
 
 <br />
 
@@ -226,13 +166,13 @@ A quick look at Accomplish on macOS, plus a short demo video.
 
 ## FAQ
 
-**Does Accomplish run locally?**  
+**Does Accomplish run locally?**
 Yes. Accomplish runs locally on your machine and you control which folders it can access.
 
-**Do I need an API key?**  
+**Do I need an API key?**
 You can use your own API keys (OpenAI, Anthropic, Google, xAI, etc.) or run local models via Ollama.
 
-**Is Accomplish free?**  
+**Is Accomplish free?**
 Yes. Accomplish is open source and MIT licensed.
 
 **Which platforms are supported?**
@@ -264,8 +204,8 @@ That's it.
 <details>
 <summary><strong>All Commands</strong></summary>
 
-| Command                                     | Description                            |
-| ------------------------------------------- | -------------------------------------- |
+| Command                                       | Description                            |
+| --------------------------------------------- | -------------------------------------- |
 | `pnpm dev`                                  | Run desktop app in dev mode            |
 | `pnpm dev:clean`                            | Dev mode with clean start              |
 | `pnpm build`                                | Build all workspaces                   |
@@ -281,8 +221,8 @@ That's it.
 <details>
 <summary><strong>Environment Variables</strong></summary>
 
-| Variable          | Description                        |
-| ----------------- | ---------------------------------- |
+| Variable            | Description                        |
+| ------------------- | ---------------------------------- |
 | `CLEAN_START=1`   | Clear all stored data on app start |
 | `E2E_SKIP_AUTH=1` | Skip onboarding flow (for testing) |
 
@@ -340,4 +280,7 @@ MIT License
 **Keywords:** AI agent, AI desktop agent, desktop automation, file management, document creation, browser automation, local-first, macOS, linux, ubuntu, privacy-first, open source, Electron, computer use, AI assistant, workflow automation, OpenAI, Anthropic, Google, xAI, Claude, GPT-4, Ollama
 
 </div>
+"# SRIM-UI"
+
+
 "# SRIM-UI"

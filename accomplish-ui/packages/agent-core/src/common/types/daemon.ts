@@ -371,6 +371,8 @@ export interface GwsAccountStatusChangedPayload {
  *  cache by reloading `skills.list` on every such event; no partial diffs. */
 export interface SkillsChangedPayload {
   kind: 'added' | 'removed' | 'updated' | 'resynced';
+  skillId?: string;  // Add this
+  enabled?: boolean; // Add this
 }
 
 /** Result of the one-shot electron-store → SQLite importer (`legacy.importElectronStoreIfNeeded`). */
