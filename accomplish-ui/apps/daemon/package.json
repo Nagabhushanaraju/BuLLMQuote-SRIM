@@ -24,6 +24,7 @@
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
+    "duckdb": "^1.4.4",
     "express": "^5.2.1",
     "nodemailer": "^6.9.14",
     "pg": "^8.13.3",

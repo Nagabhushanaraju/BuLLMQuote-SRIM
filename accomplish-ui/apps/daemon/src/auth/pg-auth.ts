@@ -4,7 +4,7 @@ import { log } from '../logger.js';
 
 let pool: Pool | null = null;
 
-function getPool(): Pool {
+export function getPool(): Pool {
   if (!pool) {
     pool = new Pool({
       host: process.env.PG_HOST ?? 'localhost',

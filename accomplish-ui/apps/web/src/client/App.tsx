@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useOutlet, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -11,11 +11,13 @@ import { OAuthProviderId } from '@accomplish_ai/agent-core/common';
 // Components
 // import Sidebar from './components/layout/Sidebar';
 // import { SidebarFallback } from './components/layout/SidebarFallback';
+import { StageExecutionOutput } from './components/execution/StageExecutionOutput';
 import { TaskLauncher } from './components/TaskLauncher';
 import { AuthErrorToast } from './components/AuthErrorToast';
 import { DaemonConnectionToast } from './components/DaemonConnectionToast';
 import SettingsDialog from './components/layout/SettingsDialog';
 import { useTaskStore } from './stores/taskStore';
+// import { getDaemonClient } from './daemon-bootstrap';
 import { SpinnerGap, Warning, FileArrowDown, Cpu, Tag, ShieldWarning } from '@phosphor-icons/react';
 // import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
@@ -82,6 +84,116 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [customRfqId, setCustomRfqId] = useState<string>('');
+  const [rfqValidationMessage, setRfqValidationMessage] = useState('');
+
+//   const validateRfqId = async (rfqId: string) => {
+//   if (!rfqId.trim()) {
+//     setRfqValidationMessage('');
+//     return;
+//   }
+
+//   try {
+//     const result = await getDaemonClient().call(
+//       'rfq.checkExists',
+//       { rfqId }
+//     );
+
+//     setRfqValidationMessage(
+//       result.exists
+//         ? 'RFQ ID already exists'
+//         : 'RFQ ID not found'
+//     );
+//   } catch (err) {
+//     setRfqValidationMessage(
+//       'Unable to validate RFQ ID'
+//     );
+//   }
+// };
+const validateRfqId = async (rfqId: string) => {
+  if (!rfqId.trim()) {
+    setRfqValidationMessage('');
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `http://192.168.29.155:3000/api/rfq/check/${encodeURIComponent(rfqId)}`
+    );
+
+    if (!response.ok) {
+      throw new Error('RFQ validation failed');
+    }
+
+    const result = await response.json();
+
+    setRfqValidationMessage(
+      result.exists
+        ? 'RFQ ID already exists'
+        : 'RFQ ID not found'
+    );
+  } catch (err) {
+    console.error(err);
+
+    setRfqValidationMessage(
+      'Unable to validate RFQ ID'
+    );
+  }
+};
+
+  const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
+  const [hitlActive, setHitlActive] = useState<boolean>(false);
+  
+  const [hitlContext, setHitlContext] = useState<HitlContext | null>(null);
+  const [sharedRowData, setSharedRowData] = useState<Record<string, unknown>[]>([]);
+
+  interface HitlContext {
+  rfqId: string;
+  stage: string;
+  type: 'preview' | 'approval';
+  }
+
+  // Fallback structural placeholder to satisfy component interface definitions
+  const mockRpcClient = useMemo(() => ({
+    request: async (channel: string, args: unknown[]) => {
+      console.log(`[RPC Outbound] Dispatching channel request: ${channel}`, args);
+      return true;
+    }
+  }), []);
+
+  // ─── ROOT LEVEL SSE CHANNEL INITIALIZATION LOOP ───
+  useEffect(() => {
+  const sse = new EventSource('http://127.0.0.1:9234/events');
+
+  const handleGlobalInterceptStream = (e: MessageEvent) => {
+    try {
+      const payload = JSON.parse(e.data);
+      if (payload.event === 'hitl:request') {
+        console.log("⚠️ HITL Intercept detected! Hydrating data array:", payload.rowData);
+        
+        setHitlContext({
+          rfqId: payload.rfqId,
+          stage: payload.stage,
+          type: payload.type
+        });
+        setSharedRowData(payload.rowData || []);
+      } else if (payload.event === 'hitl:clear') {
+        setHitlContext(null);
+        setSharedRowData([]);
+      }
+    } catch (err) {
+      console.error("Error reading stream transmission frames:", err);
+    }
+  };
+
+  sse.addEventListener('message', handleGlobalInterceptStream);
+  setSseConnection(sse);
+
+  return () => {
+    sse.removeEventListener('message', handleGlobalInterceptStream);
+    sse.close();
+  };
+}, []);
+  // ───────────────────────────────────────────────────
 
   // Get store state and actions
   const { openLauncher, authError, clearAuthError } = useTaskStore();
@@ -253,10 +365,19 @@ export function App() {
                   id="custom-rfq-textbox"
                   type="text"
                   value={customRfqId}
-                  onChange={(e) => setCustomRfqId(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCustomRfqId(value);
+                    validateRfqId(value);
+                  }}
                   placeholder="e.g. RFQ-2026-A"
                   className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-800 bg-[#020b18] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary/60 transition-colors"
                 />
+                {rfqValidationMessage && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    {rfqValidationMessage}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -348,57 +469,72 @@ export function App() {
           <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
             <div>
               <h2 className="text-sm font-semibold tracking-wide text-slate-200 uppercase">
-                Stage Execution Output
+                {hitlContext ? '⚠️ Intercept Validation View' : 'Stage Execution Output'}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Real-time compilation logs and structured JSON state schema contract models
+                {hitlContext 
+                  ? 'Human-in-the-loop intervention required. Review table item parameters to proceed.'
+                  : 'Real-time compilation logs and structured JSON state schema contract models'
+                }
               </p>
             </div>
             <div className="px-2.5 py-1 text-[10px] font-mono rounded bg-slate-900 border border-slate-800 text-primary uppercase tracking-wider">
-              {currentWorkflowStage}
+              {hitlContext ? 'HITL_HALT' : currentWorkflowStage}
             </div>
           </div>
 
-          {/* Dynamic render area tracking layout sequence state switches */}
-          <div className="flex-1 overflow-y-auto rounded-xl border border-slate-800/60 bg-[#020b18]/40 p-5 font-mono text-xs text-slate-300 leading-relaxed space-y-4 shadow-inner">
-            {currentWorkflowStage === 'intake' && (
-              <div className="space-y-3">
-                <p className="text-emerald-400 font-semibold">[INTAKE ACTIVE] Scanning network filesystem nodes...</p>
-                <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
-                  <div>&gt; Path matching verified: /staged/inbox/bom.xlsx</div>
-                  <div>&gt; Initial RFQ verification hash complete</div>
-                  <div>&gt; Status: Ready for extraction run</div>
-                </div>
-              </div>
-            )}
-            {currentWorkflowStage === 'extraction' && (
-              <div className="space-y-3">
-                <p className="text-blue-400 font-semibold">[EXTRACTION RUNNING] Executing Python contract normalization models...</p>
-                <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
-                  <div>&gt; Component items identified: 42 lines</div>
-                  <div>&gt; Extracting baseline schematic descriptors...</div>
-                  <div>&gt; Appending metadata mapping indices to local session stores</div>
-                </div>
-              </div>
-            )}
-            {currentWorkflowStage === 'pricing' && (
-              <div className="space-y-3">
-                <p className="text-amber-400 font-semibold">[PRICING MATRIX] Fetching remote distributor pipeline catalogs...</p>
-                <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
-                  <div>&gt; Querying tier-1 wholesale api hooks</div>
-                  <div>&gt; Matching local item indexes against active market parameters</div>
-                  <div>&gt; Variance limit check complete: within acceptable margin profile</div>
-                </div>
-              </div>
-            )}
-            {currentWorkflowStage === 'risk' && (
-              <div className="space-y-3">
-                <p className="text-purple-400 font-semibold">[RISK MATRIX] Evaluating global ITAR tracking records...</p>
-                <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
-                  <div>&gt; Checking restricted manufacturer registry indexes</div>
-                  <div>&gt; Conflict matching loop finished smoothly</div>
-                  <div>&gt; Final structural integrity check rating status: Cleared (Green)</div>
-                </div>
+          {/* Dynamic render area tracking layout sequence state switches or grid injections */}
+          <div className="flex-1 min-h-0 w-full rounded-xl border border-slate-800/60 bg-[#020b18]/40 overflow-hidden shadow-inner">
+            {hitlContext ? (
+              /* ✅ Directly pass the context data down through explicit component props */
+              <StageExecutionOutput 
+                rpcClient={mockRpcClient} 
+                hitlContextData={hitlContext}
+                rowDataPayload={sharedRowData}
+              />
+            ) : (
+              /* Standard fallback compilation log view cards layout structure when running normally */
+              <div className="p-5 font-mono text-xs text-slate-300 leading-relaxed space-y-4 h-full overflow-y-auto">
+                {currentWorkflowStage === 'intake' && (
+                  <div className="space-y-3">
+                    <p className="text-emerald-400 font-semibold">[INTAKE ACTIVE] Scanning network filesystem nodes...</p>
+                    <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
+                      <div>&gt; Path matching verified: /staged/inbox/bom.xlsx</div>
+                      <div>&gt; Initial RFQ verification hash complete</div>
+                      <div>&gt; Status: Ready for extraction run</div>
+                    </div>
+                  </div>
+                )}
+                {currentWorkflowStage === 'extraction' && (
+                  <div className="space-y-3">
+                    <p className="text-blue-400 font-semibold">[EXTRACTION RUNNING] Executing Python contract normalization models...</p>
+                    <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
+                      <div>&gt; Component items identified: 42 lines</div>
+                      <div>&gt; Extracting baseline schematic descriptors...</div>
+                      <div>&gt; Appending metadata mapping indices to local session stores</div>
+                    </div>
+                  </div>
+                )}
+                {currentWorkflowStage === 'pricing' && (
+                  <div className="space-y-3">
+                    <p className="text-amber-400 font-semibold">[PRICING MATRIX] Fetching remote distributor pipeline catalogs...</p>
+                    <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
+                      <div>&gt; Querying tier-1 wholesale api hooks</div>
+                      <div>&gt; Matching local item indexes against active market parameters</div>
+                      <div>&gt; Variance limit check complete: within acceptable margin profile</div>
+                    </div>
+                  </div>
+                )}
+                {currentWorkflowStage === 'risk' && (
+                  <div className="space-y-3">
+                    <p className="text-purple-400 font-semibold">[RISK MATRIX] Evaluating global ITAR tracking records...</p>
+                    <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
+                      <div>&gt; Checking restricted manufacturer registry indexes</div>
+                      <div>&gt; Conflict matching loop finished smoothly</div>
+                      <div>&gt; Final structural integrity check rating status: Cleared (Green)</div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
