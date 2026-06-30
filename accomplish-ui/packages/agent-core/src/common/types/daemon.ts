@@ -751,6 +751,10 @@ export interface DaemonNotificationMap {
   // to the renderer over IPC (`gws:account:status-changed`, `skills:changed`).
   'gwsAccount.statusChanged': GwsAccountStatusChangedPayload;
   'skills.changed': SkillsChangedPayload;
+  'rfq.checkExists': {
+    params: { rfqId: string };
+    result: { exists: boolean };
+  };
 }
 
 /** All valid daemon notification names. */

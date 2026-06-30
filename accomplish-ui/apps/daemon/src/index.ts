@@ -39,10 +39,7 @@ import { LegacyImportService } from './legacy-import-service.js';
 import { GoogleAccountService } from './google-account-service.js';
 import { SkillsService } from './skills-service.js';
 import { log } from './logger.js';
-import pg from 'pg';
-export const pgPool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:DigiBull@192.168.29.155:5432/logic_db',
-});
+import { pgPool } from './db';
 
 pgPool.query('SELECT NOW()')
   .then(() => console.log('✅ [Postgres Connection Test] Handshake verified! Database is reachable.'))

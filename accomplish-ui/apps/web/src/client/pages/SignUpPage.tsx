@@ -4,10 +4,10 @@ import { useNavigate, Link } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { registerUser } from '@/lib/session';
 import { Eye, EyeSlash } from '@phosphor-icons/react';
-import { loginWithGoogle } from '@/lib/session';
-import { AuthLayout, Field, PrimaryButton, OrDivider, GoogleButton } from './auth-shared';
+import { AuthLayout, Field, PrimaryButton } from './auth-shared';
 
 const STRENGTH_COLORS = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-400'];
+
 
 function getStrength(p: string): { level: number; label: string } {
   if (p.length < 8) return { level: 0, label: 'Too short (min 8 characters)' };
@@ -27,24 +27,28 @@ export function SignUpPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const strength = getStrength(password);
-
-  const handleGoogleSignUp = () => {
-    setError(null);
-    void loginWithGoogle().catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : 'Google sign-in is not connected yet.');
-    });
-  };
 
   const doRegister = async () => {
     setLoading(true);
     setError(null);
+    setUsernameError(null);
+    setEmailError(null);
     try {
       await registerUser(username.trim(), email.trim().toLowerCase(), password);
       void navigate('/login', { state: { registered: true }, replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed.');
+      const msg = err instanceof Error ? err.message : 'Registration failed.';
+      if (msg.toLowerCase().includes('username')) {
+        setUsernameError(msg);
+      } else if (msg.toLowerCase().includes('email')) {
+        setEmailError(msg);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -81,9 +85,9 @@ export function SignUpPage() {
           placeholder="yourname"
           autoComplete="username"
           onChange={(v) => {
-            setUsername(v);
-            setError(null);
+             setUsername(v); setUsernameError(null); setError(null);
           }}
+          error={usernameError ?? undefined}
         />
         <Field
           id="signup-email"
@@ -93,9 +97,9 @@ export function SignUpPage() {
           placeholder="you@example.com"
           autoComplete="email"
           onChange={(v) => {
-            setEmail(v);
-            setError(null);
+             setEmail(v); setEmailError(null); setError(null);
           }}
+          error={emailError ?? undefined}
         />
         <div>
           <Field
@@ -108,6 +112,8 @@ export function SignUpPage() {
             onChange={(v) => {
               setPassword(v);
               setError(null);
+              setUsernameError(null);
+              setEmailError(null);
             }}
             rightAdornment={
               <button
@@ -149,10 +155,7 @@ export function SignUpPage() {
           value={confirm}
           placeholder="Re-enter password"
           autoComplete="new-password"
-          onChange={(v) => {
-            setConfirm(v);
-            setError(null);
-          }}
+          onChange={(v) => { setConfirm(v); }}
           rightAdornment={
             <button
               type="button"
@@ -164,6 +167,11 @@ export function SignUpPage() {
             </button>
           }
         />
+        {confirm.length > 0 && (
+          <p className={`mt-1.5 text-[11px] ${password === confirm ? 'text-green-300/70' : 'text-red-300/70'}`}>
+            {password === confirm ? '✓ Passwords match' : '✗ Passwords do not match'}
+          </p>
+        )}
         <PrimaryButton loading={loading} loadingText="Creating account...">
           Create Account
         </PrimaryButton>
@@ -181,11 +189,6 @@ export function SignUpPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="mt-4 space-y-3">
-        <OrDivider />
-        <GoogleButton onClick={handleGoogleSignUp} disabled={loading} />
-      </div>
 
       <div className="mt-4 text-center text-xs">
         <span className="text-white/40">Already have an account? </span>

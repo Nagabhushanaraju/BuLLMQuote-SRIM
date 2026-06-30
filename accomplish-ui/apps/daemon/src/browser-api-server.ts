@@ -17,6 +17,8 @@ import type { SkillsService } from './skills-service.js';
 import { log } from './logger.js';
 import { matchTestLogin } from './test-login.js';
 import type { OpenAiOauthManager } from './opencode/auth-openai.js';
+// import { getBomItemsByRfq } from './auth/bom-duckdb-logic.js';
+import { fileMetadataPool } from './db.js';
 
 // Address comes from the central registry (agent-core/common/constants), with
 // env overrides so a port/domain change needs no code edits.
@@ -757,11 +759,87 @@ export class BrowserApiServer {
           freeRamGB: Math.round((os.freemem() / 1024 ** 3) * 10) / 10,
         };
       }
+      
+  // Location: src/daemon/browser-api-server.ts -> inside dispatch() method switch block
 
-      default:
+// ─── FETCH REQUISITE ROWS FROM DUCKDB TO POPULATE AG GRID PREVIEW ───
+      case 'bom:get-preview-data': {
+        const rfqId = args[0] as string;
+        if (!rfqId) throw new Error('Missing target RFQ ID context');
+
+        // Fetch straight from your local Python bridge API
+        const response = await fetch(`http://192.168.29.155:3010/api/bom/preview/${rfqId}`);
+        if (!response.ok) throw new Error('Python bridge failed to fetch BOM data');
+        
+        return await response.json(); // Returns clean array directly to AG Grid
+      }
+
+// ─── COMMIT HUMAN OVERRIDE STATE & CALLBACK TO ORCHESTRATOR ───
+      case 'hitl:submit-decision': {
+        const rfqId = args[0] as string;
+        const approved = args[1] as boolean;
+
+        if (!rfqId) throw new Error('Missing target RFQ reference frame context');
+
+        const targetStage = approved ? 'Intake_Approved' : 'Intake_Rejected';
+
+        // ====================================================================
+        // STEP 1: Update metadata states in POSTGRES (Keep this intact)
+        // ====================================================================
+        const { getPool } = await import('./auth/pg-auth.js');
+        const pool = getPool();
+
+        await pool.query(
+          `UPDATE file_metadata_db 
+           SET hitl_cleared = true, 
+               rfq_process_stage = $2
+           WHERE rfq_id = $1`,
+          [rfqId, targetStage]
+        );
+        log.info(`[HITL State] Successfully updated Postgres stage to ${targetStage} for RFQ: ${rfqId}`);
+
+
+        // ====================================================================
+        // STEP 2: Clear UI Overlay state via SSE Stream
+        // ====================================================================
+        this.send('hitl:clear', { rfqId });
+
+
+        // ====================================================================
+        // STEP 3: Dispatch Callback Webhook to wake up Orchestrator Engine
+        // ====================================================================
+        const ORCHESTRATOR_CALLBACK = 'http://127.0.0.1:8000/api/orchestrator/resume'; 
+        log.info(`[HITL Callback] Awakening execution orchestrator via HTTP POST at: ${ORCHESTRATOR_CALLBACK}`);
+
+        fetch(ORCHESTRATOR_CALLBACK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rfqId, approved, stage: 'Intake' })
+        }).catch((err) => {
+          log.error(`[HITL Callback Fault] Orchestrator listener unreachable: ${err.message}`);
+        });
+
+        return { success: true };
+      }
+
+      case 'rfq.checkExists': {
+        const payload = args[0] as Record<string, unknown> | undefined;
+        const rfqId = payload?.rfqId as string | undefined;
+        if (!rfqId || rfqId.trim() === '') {
+          throw new Error('rfqId is required');
+        }
+        const result = await fileMetadataPool.query(
+          `SELECT 1 FROM rfq_process_tracking WHERE rfq_id = $1 LIMIT 1`,
+          [rfqId.trim()],
+        );
+        return { exists: (result.rowCount ?? 0) > 0 };
+      }
+
+    default:
         throw new Error(`Unknown channel: ${channel}`);
-    }
+    
   }
+}
 
   async start(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -826,28 +904,36 @@ export class BrowserApiServer {
                 if ((username || email) && password && !pat) {
                   const identifier = username ?? email ?? '';
                   const { pgLogin } = await import('./auth/pg-auth.js');
-                  const pgUser = await pgLogin(identifier, password);
-                  if (pgUser) {
-                    const sessionToken = crypto.randomUUID();
-                    this.sessions.set(sessionToken, {
-                      userId: pgUser.id,
-                      name: pgUser.name,
-                      email: pgUser.email,
-                      createdAt: Date.now(),
-                    });
-                    log.info(`[Auth] PostgreSQL login: ${pgUser.email}`);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(
-                      JSON.stringify({
-                        sessionToken,
-                        user: { name: pgUser.name, email: pgUser.email },
-                      }),
-                    );
+                  try {
+                    const pgUser = await pgLogin(identifier, password);
+                    if (pgUser) {
+                      const sessionToken = crypto.randomUUID();
+                      this.sessions.set(sessionToken, {
+                        userId: pgUser.id,
+                        name: pgUser.name,
+                        email: pgUser.email,
+                        createdAt: Date.now(),
+                      });
+                      log.info(`[Auth] PostgreSQL login: ${pgUser.email}`);
+                      res.writeHead(200, { 'Content-Type': 'application/json' });
+                      res.end(
+                        JSON.stringify({
+                          sessionToken,
+                          user: { name: pgUser.name, email: pgUser.email },
+                        }),
+                      );
+                      return;
+                    }
+                    res.writeHead(401, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid credentials' }));
+                    return;
+                  } catch (authErr) {
+                    const msg = authErr instanceof Error ? authErr.message : 'Login failed';
+                    const isInactive = /inactive|disabled/i.test(msg);
+                    res.writeHead(isInactive ? 403 : 401, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: msg }));
                     return;
                   }
-                  res.writeHead(401, { 'Content-Type': 'application/json' });
-                  res.end(JSON.stringify({ error: 'Invalid credentials' }));
-                  return;
                 }
                 if (!pat) {
                   res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1005,10 +1091,64 @@ export class BrowserApiServer {
           return;
         }
 
-        // ── Protected routes — require valid session ──────────────────────────
-        if (!this.validateSession(req)) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Unauthorized — please log in' }));
+        if (method === 'POST' && url === '/api/internal/trigger-hitl') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk; });
+          req.on('end', () => {
+            void (async () => {
+              try {
+                const parsed = JSON.parse(body) as {
+                  rfqId: string;
+                  stage: string;
+                  hitlType: 'preview' | 'approval';
+                };
+
+                if (!parsed.rfqId || !parsed.stage || !parsed.hitlType) {
+                  res.writeHead(400, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'Missing rfqId, stage, or hitlType' }));
+                  return;
+                }
+
+                log.info(`[HITL Webhook] Orchestrator halted for RFQ: ${parsed.rfqId}. Fetching rows from Python DuckDB Bridge...`);
+
+                // 1. Direct request to your Python DuckDB API Bridge server
+                const PYTHON_BRIDGE_URL = `http://192.168.29.155:3010/api/bom/preview/${parsed.rfqId}`; 
+                const bridgeResponse = await fetch(PYTHON_BRIDGE_URL);
+                
+                if (!bridgeResponse.ok) {
+                  throw new Error(`Python DuckDB bridge responded with status ${bridgeResponse.status}`);
+                }
+
+                const bridgeJson = await bridgeResponse.json() as { data?: Record<string, unknown>[]; success?: boolean } | Record<string, unknown>[];
+                const bomRows = Array.isArray(bridgeJson) ? bridgeJson : (bridgeJson as { data?: Record<string, unknown>[] }).data ?? [];
+                log.info(`[DuckDB Bridge] Successfully retrieved ${bomRows.length} BOM line items.`);
+
+                // ─── MODIFIED STEP 2: BROADCAST VIA STANDARD MULTI-CLIENT BUFFER WRITE ───
+                const ssePayload = {
+                  event: 'hitl:request',
+                  rfqId: parsed.rfqId,
+                  stage: parsed.stage,
+                  type: parsed.hitlType,
+                  rowData: bomRows,
+                };
+
+                // Stream the text frame out directly to all active browser connection listeners
+                for (const client of this.sseClients) {
+                  client.write(`data: ${JSON.stringify(ssePayload)}\n\n`);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, rowsFetched: bomRows.length }));
+              } catch (e) {
+                log.error(`[HITL Webhook Error] Process failed: ${e instanceof Error ? e.message : String(e)}`);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                  error: 'Failed to process hitl pipeline sequence', 
+                  details: e instanceof Error ? e.message : String(e) 
+                }));
+              }
+            })();
+          });
           return;
         }
 
@@ -1021,6 +1161,13 @@ export class BrowserApiServer {
           res.write(':ok\n\n');
           this.sseClients.add(res);
           req.on('close', () => this.sseClients.delete(res));
+          return;
+        }
+
+        // ── Protected routes — require valid session ──────────────────────────
+        if (!this.validateSession(req)) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized — please log in' }));
           return;
         }
         if (method === 'POST' && url === '/rpc') {
@@ -1046,6 +1193,8 @@ export class BrowserApiServer {
           });
           return;
         }
+        // Location: src/daemon/browser-api-server.ts (Inside the createServer callback block)
+
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end('{"error":"Not found"}');
       });

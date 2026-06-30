@@ -33,6 +33,8 @@ import type {
   GwsAccountStatusChangedPayload,
   SkillsChangedPayload,
 } from '@accomplish_ai/agent-core';
+import { fileMetadataPool } from './db'; // adjust path
+
 
 const taskIdSchema = z.object({ taskId: z.string().min(1) });
 // taskConfigSchema already includes modelId — no extension needed
@@ -115,6 +117,36 @@ export function registerRpcMethods(services: RouteServices): void {
       return taskService.startTask(validated);
     }),
   );
+
+
+  rpc.registerMethod(
+  'rfq.checkExists',
+  safeHandler(async (params) => {
+    const v = validate(
+      z.object({
+        rfqId: z.string().min(1),
+      }),
+      params,
+    );
+
+    const result = await fileMetadataPool.query(
+      `
+      SELECT 1
+      FROM rfq_process_tracking
+      WHERE rfq_id = $1
+      LIMIT 1
+      `,
+      [v.rfqId],
+    );
+
+    return {
+      exists: (result.rowCount ?? 0) > 0,
+    };
+  }),
+);
+
+
+
   rpc.registerMethod(
     'task.stop',
     safeHandler((params) => {
@@ -1200,7 +1232,7 @@ export function registerRpcMethods(services: RouteServices): void {
     safeHandler(() => Promise.resolve(skillsService.getUserSkillsPath())),
   );
 
-  skillsService.on('skills.changed', (payload: SkillsChangedPayload) => {
+  skillsService.on('  hanged', (payload: SkillsChangedPayload) => {
     rpc.notify('skills.changed', payload);
   });
 }

@@ -23,6 +23,7 @@ export function Field({
   autoComplete,
   onChange,
   rightAdornment,
+  error,
 }: {
   id: string;
   label: string;
@@ -32,6 +33,7 @@ export function Field({
   autoComplete?: string;
   onChange: (v: string) => void;
   rightAdornment?: ReactNode;
+  error?: string;
 }) {
   return (
     <label htmlFor={id} className="block space-y-1.5">
@@ -46,12 +48,13 @@ export function Field({
           placeholder={placeholder}
           autoComplete={autoComplete}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full rounded-2xl border border-white/10 bg-white/[0.07] py-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 focus:border-cyan-300/60 focus:bg-white/[0.1] focus:shadow-[0_0_0_4px_rgba(34,211,238,0.12)] ${rightAdornment ? 'pl-4 pr-10' : 'px-4'}`}
+          className={`w-full rounded-2xl border bg-white/[0.07] py-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 focus:bg-white/[0.1] focus:shadow-[0_0_0_4px_rgba(34,211,238,0.12)] ${error ? 'border-red-400/50 focus:border-red-400/70' : 'border-white/10 focus:border-cyan-300/60'} ${rightAdornment ? 'pl-4 pr-10' : 'px-4'}`}
         />
         {rightAdornment && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightAdornment}</div>
         )}
       </div>
+      {error && <p className="mt-1 text-[11px] text-red-300/70">{error}</p>}
     </label>
   );
 }
@@ -96,23 +99,23 @@ export function OrDivider() {
   );
 }
 
-export function GoogleButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
-  return (
-    <motion.button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      whileHover={{ scale: disabled ? 1 : 1.015, y: disabled ? 0 : -1 }}
-      whileTap={{ scale: disabled ? 1 : 0.99 }}
-      className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/85 transition hover:border-white/25 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-45"
-    >
-      <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-xs font-black text-slate-900">
-        G
-      </span>
-      Continue with Google
-    </motion.button>
-  );
-}
+// export function GoogleButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+//   return (
+//     <motion.button
+//       type="button"
+//       disabled={disabled}
+//       onClick={onClick}
+//       whileHover={{ scale: disabled ? 1 : 1.015, y: disabled ? 0 : -1 }}
+//       whileTap={{ scale: disabled ? 1 : 0.99 }}
+//       className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/85 transition hover:border-white/25 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-45"
+//     >
+//       <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-xs font-black text-slate-900">
+//         G
+//       </span>
+//       Continue with Google
+//     </motion.button>
+//   );
+// }
 
 export function AuthLayout({
   subtitle,
@@ -205,7 +208,7 @@ export function AuthLayout({
               </motion.div>
             </div>
 
-            {/* Status strip */}
+            {/* Status strip
             <motion.div
               {...fadeUp(1.0)}
               className="mt-5 flex items-center gap-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25"
@@ -222,7 +225,7 @@ export function AuthLayout({
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
                 AI Routing Active
               </span>
-            </motion.div>
+            </motion.div> */}
           </section>
         </div>
       </main>

@@ -3,9 +3,8 @@ import type { FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { loginWithCredentials } from '@/lib/session';
-import { Eye, EyeSlash } from '@phosphor-icons/react';
-import { loginWithGoogle } from '@/lib/session';
-import { AuthLayout, Field, PrimaryButton, OrDivider, GoogleButton } from './auth-shared';
+import { Eye, EyeSlash, LockKey, ShieldCheck } from '@phosphor-icons/react';
+import { AuthLayout, Field, PrimaryButton } from './auth-shared';
 
 // For development/testing only. Remove or disable in production.
 const TEST_CREDS = {
@@ -34,18 +33,15 @@ export function LoginPage() {
     if (state?.passwordReset) setNotice('Password updated successfully. Please sign in.');
   }, [location.state]);
 
-  const runAuth = async (action: () => Promise<unknown>, fallback: string) => {
-    setLoading(true);
-    setError(null);
-    setNotice(null);
-    try {
-      await action();
-      void navigate('/', { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : fallback);
-    } finally {
-      setLoading(false);
+  const classifyError = (err: unknown): string => {
+    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('refused') || msg.includes('failed to fetch')) {
+      return '🔴 Cannot reach authentication server. Check your network or firewall.';
     }
+    if (msg.includes('inactive') || msg.includes('disabled') || msg.includes('domain') || msg.includes('403')) {
+      return '⚠️ Account inactive or domain access denied. Contact your administrator.';
+    }
+    return '❌ Invalid username or password. Please try again.';
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -58,21 +54,25 @@ export function LoginPage() {
       setError('Enter your password.');
       return;
     }
-    void runAuth(
-      () => loginWithCredentials(identifier.trim(), password),
-      'Sign in failed. Check your credentials.',
-    );
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    loginWithCredentials(identifier.trim(), password)
+      .then(() => { void navigate('/', { replace: true }); })
+      .catch((err) => { setError(classifyError(err)); })
+      .finally(() => { setLoading(false); });
   };
 
-  const handleGoogleLogin = () =>
-    void runAuth(() => loginWithGoogle(), 'Google sign-in is not connected yet.');
-
   // For development/testing only. Remove or disable in production.
-  const handleTestLogin = () =>
-    void runAuth(
-      () => loginWithCredentials(TEST_CREDS.username, TEST_CREDS.password),
-      'Test login failed.',
-    );
+  const handleTestLogin = () => {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    loginWithCredentials(TEST_CREDS.username, TEST_CREDS.password)
+      .then(() => { void navigate('/', { replace: true }); })
+      .catch((err) => { setError(classifyError(err)); })
+      .finally(() => { setLoading(false); });
+  };
 
   return (
     <AuthLayout subtitle="Welcome back" title="Login to SRIM" badge="Secure">
@@ -113,6 +113,16 @@ export function LoginPage() {
         <PrimaryButton loading={loading} loadingText="Signing in...">
           Sign In
         </PrimaryButton>
+
+        {/* On-Prem Verified badge */}
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">On-Prem Verified</p>
+            <p className="text-[10px] text-emerald-300/60">Authentication handled locally — no cloud access</p>
+          </div>
+          <LockKey className="ml-auto h-4 w-4 shrink-0 text-emerald-500/50" />
+        </div>
       </form>
 
       <AnimatePresence>
@@ -123,7 +133,9 @@ export function LoginPage() {
             exit={{ opacity: 0, y: -8 }}
             className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${
               error
-                ? 'border-red-300/20 bg-red-400/10 text-red-100'
+                ? error.startsWith('⚠️')
+                  ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+                  : 'border-red-300/20 bg-red-400/10 text-red-100'
                 : 'border-cyan-200/20 bg-cyan-200/10 text-cyan-50'
             }`}
           >
@@ -131,11 +143,6 @@ export function LoginPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="mt-4 space-y-3">
-        <OrDivider />
-        <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
-      </div>
 
       <div className="mt-4 flex items-center justify-between text-xs">
         <Link
