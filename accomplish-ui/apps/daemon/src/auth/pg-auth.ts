@@ -40,9 +40,9 @@ type DbRow = {
 
 async function verifyRow(row: DbRow | undefined, password: string): Promise<PgUser | null> {
   if (!row) return null;
-  if (row.is_active === false) return null;
   const valid = await bcrypt.compare(password, row.password_hash);
   if (!valid) return null;
+  if (row.is_active === false) { throw new Error('Account inactive or disabled'); }
   return {
     id: String(row.id),
     name: row.full_name ?? row.uid ?? row.email,
@@ -103,6 +103,9 @@ export async function pgRegister(
     };
   } catch (e: unknown) {
     if ((e as { code?: string }).code === '23505') {
+      const detail = (e as { detail?: string }).detail ?? '';
+      if (/\(uid\)|\(username\)/i.test(detail)) { throw new Error('Username already taken'); }
+      if (/\(email\)/i.test(detail)) { throw new Error('Email already registered'); }
       throw new Error('An account with this username or email already exists');
     }
     throw e;

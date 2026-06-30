@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useOutlet, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,8 @@ import SettingsDialog from './components/layout/SettingsDialog';
 import { useTaskStore } from './stores/taskStore';
 // import { getDaemonClient } from './daemon-bootstrap';
 import { SpinnerGap, Warning, FileArrowDown, Cpu, Tag, ShieldWarning } from '@phosphor-icons/react';
+import { RfqIntakeUploadModal } from './components/rfq/RfqIntakeUploadModal';
+import { LocalSessionStatusBar } from './components/layout/LocalSessionStatusBar';
 // import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 type AppStatus = 'loading' | 'ready' | 'error';
@@ -80,11 +82,12 @@ export function App() {
 
   // Local tracking state for workflow stages canvas rendering
   const [currentWorkflowStage, setCurrentWorkflowStage] = useState<'intake' | 'extraction' | 'pricing' | 'risk'>('intake');
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [intakeModalOpen, setIntakeModalOpen] = useState(false);
 
   const [customRfqId, setCustomRfqId] = useState<string>('');
   const [rfqValidationMessage, setRfqValidationMessage] = useState('');
+
+
 
 //   const validateRfqId = async (rfqId: string) => {
 //   if (!rfqId.trim()) {
@@ -109,6 +112,7 @@ export function App() {
 //     );
 //   }
 // };
+
 const validateRfqId = async (rfqId: string) => {
   if (!rfqId.trim()) {
     setRfqValidationMessage('');
@@ -116,15 +120,11 @@ const validateRfqId = async (rfqId: string) => {
   }
 
   try {
-    const response = await fetch(
-      `http://192.168.29.155:3000/api/rfq/check/${encodeURIComponent(rfqId)}`
-    );
+    const accomplish = getAccomplish();
 
-    if (!response.ok) {
-      throw new Error('RFQ validation failed');
-    }
-
-    const result = await response.json();
+    const result = await accomplish.checkRfqExists({
+      rfqId: rfqId.trim(),
+    });
 
     setRfqValidationMessage(
       result.exists
@@ -139,6 +139,7 @@ const validateRfqId = async (rfqId: string) => {
     );
   }
 };
+
 
   const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
   const [hitlActive, setHitlActive] = useState<boolean>(false);
@@ -198,46 +199,6 @@ const validateRfqId = async (rfqId: string) => {
   // Get store state and actions
   const { openLauncher, authError, clearAuthError } = useTaskStore();
 
-  // ─── FILE UPLOAD HANDLER ROUTED TO PYTHON FASTAPI BACKEND (PORT 3000) ───
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    setUploading(true);
-
-    try {
-      // Append the captured binary file stream into a standard multipart payload
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      // ─── PIPE THE USER INPUT TEXT STRINGS DIRECTLY TO BACKEND ─────────
-      formData.append('rfq_id', customRfqId.trim());
-
-      // POST request sent directly to your Python Uvicorn server configuration
-      const response = await fetch('http://192.168.29.155:3000/api/rfq/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Python upload server responded with status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('[Python Server Sync Complete]:', result);
-      alert(`Successfully uploaded file for RFQ ID "${customRfqId}": ${file.name}`);
-      
-    } catch (error: unknown) {
-      console.error('[Python Server Sync Error]:', error);
-      alert(`Sync Failed: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
-    } finally {
-      setUploading(false);
-      // Clear value so the user can re-upload or upload multiple files sequentially if needed
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   // Handle re-login from auth error toast
   const handleAuthReLogin = useCallback(() => {
@@ -321,22 +282,22 @@ const validateRfqId = async (rfqId: string) => {
 
   // Ready - render canvas view split equally into 3 distinct sections
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#020B18]">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#020B18]">
       {/* Invisible drag region for window dragging (macOS hiddenInset titlebar) */}
       <div className="drag-region fixed top-0 left-0 right-0 h-10 z-50 pointer-events-none" />
 
-      {/* ─── HIDDEN FILE SYSTEM CONTEXT INPUT TRIGGER ─────────────────────── */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx,.xls,.csv,.pdf" 
-        aria-label="Upload RFQ source file"
+      <RfqIntakeUploadModal
+        open={intakeModalOpen}
+        rfqId={customRfqId}
+        onClose={() => setIntakeModalOpen(false)}
+        onSuccess={() => {
+          setIntakeModalOpen(false);
+          setCurrentWorkflowStage('intake');
+        }}
       />
 
       {/* ─── CANVAS GRID WRAPPER (Three Columns) ─────────────────────────── */}
-      <div className="flex w-full h-full divide-x divide-slate-800/60">
+      <div className="flex flex-1 min-h-0 w-full divide-x divide-slate-800/60">
         
         {/* COLUMN 1: SIDEBAR CONTAINER & WORKFLOW MANAGER */}
         <div className="w-1/3 h-full flex flex-col justify-between bg-[#030d1d] px-5 py-6">
@@ -392,13 +353,10 @@ const validateRfqId = async (rfqId: string) => {
                   return (
                     <button
                       key={stage.id}
-                      disabled={uploading}
                       onClick={() => {
                         setCurrentWorkflowStage(stage.id as 'intake' | 'extraction' | 'pricing' | 'risk');
-                        
-                        // If user selects Intake, fire a proxy click event onto our hidden layout file input element
                         if (stage.id === 'intake') {
-                          fileInputRef.current?.click();
+                          setIntakeModalOpen(true);
                         }
                       }}
                       className={`w-full flex items-center space-x-4 p-3.5 rounded-lg text-left border transition-all ${
@@ -410,16 +368,10 @@ const validateRfqId = async (rfqId: string) => {
                       <div className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm ${
                         isSelected ? 'bg-primary/20 border-primary/40' : 'bg-slate-900 border-slate-800'
                       }`}>
-                        {uploading && stage.id === 'intake' ? (
-                          <SpinnerGap className="h-4 w-4 animate-spin text-primary" />
-                        ) : (
-                          idx + 1
-                        )}
+                        {idx + 1}
                       </div>
                       <IconComponent className="h-5 w-5 flex-shrink-0" />
-                      <span className="text-sm tracking-wide">
-                        {uploading && stage.id === 'intake' ? 'Uploading File...' : stage.name}
-                      </span>
+                      <span className="text-sm tracking-wide">{stage.name}</span>
                     </button>
                   );
                 })}
@@ -457,15 +409,25 @@ const validateRfqId = async (rfqId: string) => {
 
         </div>
 
-        {/* COLUMN 2: CENTRAL AI ASSISTANT CHAT CONTAINER */}
-        <div className="w-1/3 h-full flex flex-col overflow-hidden bg-[#020B18]">
+        {/* COLUMN 2: CENTRAL AI ASSISTANT CHAT CONTAINER — collapses when HITL is active */}
+        <motion.div
+          animate={{ width: hitlContext ? '0%' : '33.333%', opacity: hitlContext ? 0 : 1 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+          className="h-full flex flex-col overflow-hidden bg-[#020B18]"
+          style={{ minWidth: 0 }}
+        >
           <main className="flex-1 overflow-hidden relative">
             <AnimatedOutletWrapper />
           </main>
-        </div>
+        </motion.div>
 
-        {/* COLUMN 3: REAL-TIME OUTPUT STREAM WORKSPACE */}
-        <div className="w-1/3 h-full flex flex-col bg-[#030d1d] overflow-hidden p-6">
+        {/* COLUMN 3: REAL-TIME OUTPUT STREAM WORKSPACE — expands to 2/3 on HITL */}
+        <motion.div
+          animate={{ width: hitlContext ? '66.666%' : '33.333%' }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+          className="h-full flex flex-col bg-[#030d1d] overflow-hidden p-6"
+          style={{ minWidth: 0 }}
+        >
           <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
             <div>
               <h2 className="text-sm font-semibold tracking-wide text-slate-200 uppercase">
@@ -496,7 +458,7 @@ const validateRfqId = async (rfqId: string) => {
               /* Standard fallback compilation log view cards layout structure when running normally */
               <div className="p-5 font-mono text-xs text-slate-300 leading-relaxed space-y-4 h-full overflow-y-auto">
                 {currentWorkflowStage === 'intake' && (
-                  <div className="space-y-3">
+                  <div className="space-y-3"> 
                     <p className="text-emerald-400 font-semibold">[INTAKE ACTIVE] Scanning network filesystem nodes...</p>
                     <div className="bg-slate-900/60 p-3 rounded border border-slate-800/80 text-slate-400 space-y-1">
                       <div>&gt; Path matching verified: /staged/inbox/bom.xlsx</div>
@@ -538,10 +500,12 @@ const validateRfqId = async (rfqId: string) => {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
       </div>
       {/* ─────────────────────────────────────────────────────────────────── */}
+
+      <LocalSessionStatusBar />
 
       <TaskLauncher />
 

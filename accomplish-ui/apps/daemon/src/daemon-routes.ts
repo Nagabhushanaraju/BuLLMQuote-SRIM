@@ -33,7 +33,7 @@ import type {
   GwsAccountStatusChangedPayload,
   SkillsChangedPayload,
 } from '@accomplish_ai/agent-core';
-import { fileMetadataPool } from './db.js';
+import { fileMetadataPool } from './db'; // adjust path
 
 
 const taskIdSchema = z.object({ taskId: z.string().min(1) });
@@ -117,6 +117,8 @@ export function registerRpcMethods(services: RouteServices): void {
       return taskService.startTask(validated);
     }),
   );
+
+
   rpc.registerMethod(
   'rfq.checkExists',
   safeHandler(async (params) => {
@@ -138,7 +140,7 @@ export function registerRpcMethods(services: RouteServices): void {
     );
 
     return {
-      exists: result.rowCount > 0,
+      exists: (result.rowCount ?? 0) > 0,
     };
   }),
 );

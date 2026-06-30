@@ -39,7 +39,7 @@ import { LegacyImportService } from './legacy-import-service.js';
 import { GoogleAccountService } from './google-account-service.js';
 import { SkillsService } from './skills-service.js';
 import { log } from './logger.js';
-import { pgPool, fileMetadataPool } from './db.js';
+import { pgPool } from './db';
 
 pgPool.query('SELECT NOW()')
   .then(() => console.log('✅ [Postgres Connection Test] Handshake verified! Database is reachable.'))

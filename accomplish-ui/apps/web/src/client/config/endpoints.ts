@@ -22,10 +22,14 @@
 function resolveBackendUrl(): string {
   const fromEnv = import.meta.env.VITE_BACKEND_URL as string | undefined;
   if (fromEnv && fromEnv.trim()) {
+    console.log(`[endpoints.ts] Using VITE_BACKEND_URL override: ${fromEnv}`);
     // Strip any trailing slash so `${BACKEND_URL}/rpc` never double-slashes.
     return fromEnv.trim().replace(/\/+$/, '');
   }
   if (import.meta.env.DEV) {
+    console.log(import.meta.env.DEV);
+    console.log("[endpoints.ts] Using dev fallback backend URL: http://127.0.0.1:9234");
+    console.log(`${window.location.protocol}//${window.location.hostname}:9234`)
     return `${window.location.protocol}//${window.location.hostname}:9234`;
   }
   // Production build served from a domain: talk to the same origin.
