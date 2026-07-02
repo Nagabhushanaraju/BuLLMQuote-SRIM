@@ -768,7 +768,7 @@ export class BrowserApiServer {
         if (!rfqId) throw new Error('Missing target RFQ ID context');
 
         // Fetch straight from your local Python bridge API
-        const response = await fetch(`http://192.168.29.155:3010/api/bom/preview/${rfqId}`);
+        const response = await fetch(`http://192.168.1.27:3010/api/bom/preview/${rfqId}`);
         if (!response.ok) throw new Error('Python bridge failed to fetch BOM data');
         
         return await response.json(); // Returns clean array directly to AG Grid
@@ -833,6 +833,56 @@ export class BrowserApiServer {
           [rfqId.trim()],
         );
         return { exists: (result.rowCount ?? 0) > 0 };
+      }
+
+      case 'rfq.getFileVersions': {
+        const payload = args[0] as Record<string, unknown> | undefined;
+        const rfqId = payload?.rfqId as string | undefined;
+        if (!rfqId || rfqId.trim() === '') { throw new Error('rfqId is required'); }
+        const result = await fileMetadataPool.query(
+          `SELECT file_id, file_path, file_role, processed_at
+           FROM rfq_file_telemetry
+           WHERE rfq_id = $1
+           ORDER BY processed_at ASC`,
+          [rfqId.trim()],
+        );
+        const boms    = result.rows.filter((r: Record<string, unknown>) => r.file_role === 'BOM');
+        const volumes = result.rows.filter((r: Record<string, unknown>) => r.file_role === 'VOLUME');
+        const toName  = (p: unknown) => String(p).split(/[/\\]/).pop() ?? String(p);
+        const versions = boms
+          .map((b: Record<string, unknown>, i: number) => {
+            const v = volumes[i];
+            if (!v) { return null; }
+            return {
+              version: i + 1,
+              processedAt: b.processed_at instanceof Date
+                ? (b.processed_at as Date).toISOString()
+                : String(b.processed_at),
+              bom:    { id: String(b.file_id), fileName: toName(b.file_path) },
+              volume: { id: String(v.file_id), fileName: toName(v.file_path) },
+            };
+          })
+          .filter(Boolean);
+        return { versions };
+      }
+
+      case 'rfq.activateVersion': {
+        const payload  = args[0] as Record<string, unknown> | undefined;
+        const rfqId    = payload?.rfqId    as string | undefined;
+        const bomId    = payload?.bomId    as string | undefined;
+        const volumeId = payload?.volumeId as string | undefined;
+        if (!rfqId || !bomId || !volumeId) {
+          throw new Error('rfqId, bomId and volumeId are required');
+        }
+        await fileMetadataPool.query(
+          'UPDATE rfq_file_telemetry SET is_active = FALSE WHERE rfq_id = $1',
+          [rfqId],
+        );
+        await fileMetadataPool.query(
+          'UPDATE rfq_file_telemetry SET is_active = TRUE WHERE file_id = ANY($1::uuid[])',
+          [[bomId, volumeId]],
+        );
+        return { success: true };
       }
 
     default:
@@ -1112,7 +1162,7 @@ export class BrowserApiServer {
                 log.info(`[HITL Webhook] Orchestrator halted for RFQ: ${parsed.rfqId}. Fetching rows from Python DuckDB Bridge...`);
 
                 // 1. Direct request to your Python DuckDB API Bridge server
-                const PYTHON_BRIDGE_URL = `http://192.168.29.155:3010/api/bom/preview/${parsed.rfqId}`; 
+                const PYTHON_BRIDGE_URL = `http://192.168.1.27:3010/api/bom/preview/${parsed.rfqId}`; 
                 const bridgeResponse = await fetch(PYTHON_BRIDGE_URL);
                 
                 if (!bridgeResponse.ok) {
