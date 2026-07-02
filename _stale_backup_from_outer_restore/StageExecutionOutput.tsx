@@ -9,7 +9,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const PYTHON_BRIDGE = 'http://192.168.1.27:3010';
+const PYTHON_BRIDGE = 'http://192.168.29.155:3010';
 
 interface HitlContext {
   rfqId: string;

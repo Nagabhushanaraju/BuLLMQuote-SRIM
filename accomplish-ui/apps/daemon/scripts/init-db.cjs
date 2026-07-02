@@ -12,9 +12,7 @@ async function main() {
     password: process.env.PG_PASSWORD?.trim(),
   });
 
-  console.log(
-    `[init-db] Connecting to ${process.env.PG_HOST?.trim()}:${process.env.PG_PORT ?? 5432}/${process.env.PG_DB?.trim()}...`,
-  );
+  console.log(`[init-db] Connecting to ${process.env.PG_HOST?.trim()}:${process.env.PG_PORT ?? 5432}/${process.env.PG_DB?.trim()}...`);
   await client.connect();
   console.log('[init-db] Connected.');
 

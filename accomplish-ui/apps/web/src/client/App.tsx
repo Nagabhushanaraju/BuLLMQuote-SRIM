@@ -20,6 +20,8 @@ import { useTaskStore } from './stores/taskStore';
 // import { getDaemonClient } from './daemon-bootstrap';
 import { SpinnerGap, Warning, FileArrowDown, Cpu, Tag, ShieldWarning } from '@phosphor-icons/react';
 import { RfqIntakeUploadModal } from './components/rfq/RfqIntakeUploadModal';
+import { RfqVersionSelectModal } from './components/rfq/RfqVersionSelectModal';
+import type { RfqFileVersion } from './components/rfq/RfqVersionSelectModal';
 import { LocalSessionStatusBar } from './components/layout/LocalSessionStatusBar';
 // import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
@@ -83,6 +85,8 @@ export function App() {
   // Local tracking state for workflow stages canvas rendering
   const [currentWorkflowStage, setCurrentWorkflowStage] = useState<'intake' | 'extraction' | 'pricing' | 'risk'>('intake');
   const [intakeModalOpen, setIntakeModalOpen] = useState(false);
+  const [versionSelectOpen, setVersionSelectOpen] = useState(false);
+  const [rfqVersions, setRfqVersions] = useState<RfqFileVersion[]>([]);
 
   const [customRfqId, setCustomRfqId] = useState<string>('');
   const [rfqValidationMessage, setRfqValidationMessage] = useState('');
@@ -296,6 +300,26 @@ const validateRfqId = async (rfqId: string) => {
         }}
       />
 
+      <RfqVersionSelectModal
+        open={versionSelectOpen}
+        rfqId={customRfqId}
+        versions={rfqVersions}
+        onClose={() => setVersionSelectOpen(false)}
+        onSelectVersion={async (v) => {
+          await getAccomplish().rfqActivateVersion({
+            rfqId: customRfqId.trim(),
+            bomId: v.bom.id,
+            volumeId: v.volume.id,
+          });
+          setVersionSelectOpen(false);
+          setCurrentWorkflowStage('intake');
+        }}
+        onUploadNew={() => {
+          setVersionSelectOpen(false);
+          setIntakeModalOpen(true);
+        }}
+      />
+
       {/* ─── CANVAS GRID WRAPPER (Three Columns) ─────────────────────────── */}
       <div className="flex flex-1 min-h-0 w-full divide-x divide-slate-800/60">
         
@@ -355,9 +379,21 @@ const validateRfqId = async (rfqId: string) => {
                       key={stage.id}
                       onClick={() => {
                         setCurrentWorkflowStage(stage.id as 'intake' | 'extraction' | 'pricing' | 'risk');
-                        if (stage.id === 'intake') {
-                          setIntakeModalOpen(true);
-                        }
+                        if (stage.id !== 'intake') { return; }
+                        if (!customRfqId.trim()) { setIntakeModalOpen(true); return; }
+                        void (async () => {
+                          try {
+                            const data = await getAccomplish().rfqGetFileVersions({ rfqId: customRfqId.trim() });
+                            if (data.versions.length > 0) {
+                              setRfqVersions(data.versions);
+                              setVersionSelectOpen(true);
+                            } else {
+                              setIntakeModalOpen(true);
+                            }
+                          } catch {
+                            setIntakeModalOpen(true);
+                          }
+                        })();
                       }}
                       className={`w-full flex items-center space-x-4 p-3.5 rounded-lg text-left border transition-all ${
                         isSelected
