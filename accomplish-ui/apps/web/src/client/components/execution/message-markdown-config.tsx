@@ -1,6 +1,7 @@
 import type { Components } from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { CodeBlock } from '@/components/ui/CodeBlock';
+import { MarkdownTable } from '@/components/ui/MarkdownTable';
 
 // Hoisted to module scope — stable reference, shared by all message bubbles.
 export const proseClasses = cn(
@@ -43,5 +44,8 @@ export const markdownComponents: Components = {
         {code}
       </CodeBlock>
     );
+  },
+  table({ children }) {
+    return <MarkdownTable>{children}</MarkdownTable>;
   },
 };

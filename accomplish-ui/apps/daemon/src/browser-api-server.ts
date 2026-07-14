@@ -768,7 +768,8 @@ export class BrowserApiServer {
         if (!rfqId) throw new Error('Missing target RFQ ID context');
 
         // Fetch straight from your local Python bridge API
-        const response = await fetch(`http://192.168.1.27:3010/api/bom/preview/${rfqId}`);
+        const PYTHON_SERVICE = (process.env.PYTHON_SERVICE_URL ?? 'http://192.168.1.27:3010').replace(/\/$/, '');
+        const response = await fetch(`${PYTHON_SERVICE}/api/bom/preview/${rfqId}`);
         if (!response.ok) throw new Error('Python bridge failed to fetch BOM data');
         
         return await response.json(); // Returns clean array directly to AG Grid
@@ -808,7 +809,8 @@ export class BrowserApiServer {
         // ====================================================================
         // STEP 3: Dispatch Callback Webhook to wake up Orchestrator Engine
         // ====================================================================
-        const ORCHESTRATOR_CALLBACK = 'http://127.0.0.1:8000/api/orchestrator/resume'; 
+        const ORCHESTRATOR_BASE = (process.env.ORCHESTRATOR_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
+        const ORCHESTRATOR_CALLBACK = `${ORCHESTRATOR_BASE}/api/orchestrator/resume`;
         log.info(`[HITL Callback] Awakening execution orchestrator via HTTP POST at: ${ORCHESTRATOR_CALLBACK}`);
 
         fetch(ORCHESTRATOR_CALLBACK, {
@@ -1162,7 +1164,8 @@ export class BrowserApiServer {
                 log.info(`[HITL Webhook] Orchestrator halted for RFQ: ${parsed.rfqId}. Fetching rows from Python DuckDB Bridge...`);
 
                 // 1. Direct request to your Python DuckDB API Bridge server
-                const PYTHON_BRIDGE_URL = `http://192.168.1.27:3010/api/bom/preview/${parsed.rfqId}`; 
+                const PYTHON_SVC = (process.env.PYTHON_SERVICE_URL ?? 'http://192.168.1.27:3010').replace(/\/$/, '');
+                const PYTHON_BRIDGE_URL = `${PYTHON_SVC}/api/bom/preview/${parsed.rfqId}`;
                 const bridgeResponse = await fetch(PYTHON_BRIDGE_URL);
                 
                 if (!bridgeResponse.ok) {

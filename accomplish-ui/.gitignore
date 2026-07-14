@@ -52,5 +52,8 @@ Thumbs.db
 *.sln
 *.swp
 
+apps/daemon/data/*.db-shm
+apps/daemon/data/*.db-wal
+
 # Note: We keep .devcontainer/ as it is seen in image_3c843d.png 
 # and explicitly meant for shared team environment setups.
