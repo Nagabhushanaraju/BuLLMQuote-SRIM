@@ -1,26 +1,61 @@
 // Location: src/renderer/components/StageExecutionOutput.tsx
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { AllCommunityModule, ModuleRegistry, ColDef, CellValueChangedEvent } from 'ag-grid-community';
-import { SpinnerGap } from '@phosphor-icons/react';
+import { AllCommunityModule, ModuleRegistry, ColDef, CellValueChangedEvent, IRowNode } from 'ag-grid-community';
+import { SpinnerGap, FileXls } from '@phosphor-icons/react';
+import { utils, writeFile } from 'xlsx';
+import { BomQualityStrip, findDuplicateMpns, type QualityFilter } from './BomQualityStrip';
 
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const PYTHON_BRIDGE = 'http://192.168.1.27:3010';
+const PYTHON_BRIDGE = (import.meta.env.VITE_PYTHON_BRIDGE_URL ?? 'http://192.168.1.27:3010').replace(/\/$/, '');
 
 interface HitlContext {
   rfqId: string;
   stage: string;
-  type: 'preview' | 'approval';
+  type: 'preview' | 'approval' | 'alternates';
 }
 
 interface StageExecutionOutputProps {
   rpcClient: { request: (channel: string, args: unknown[]) => Promise<unknown> };
-  hitlContextData: HitlContext;              
-  rowDataPayload: Record<string, unknown>[];  
+  hitlContextData: HitlContext;
+  rowDataPayload: Record<string, unknown>[];
+}
+
+interface AlternateSupplier {
+  supplier: string;
+  price: number;
+  moq: number;
+  lead_time: string;
+  stock: number;
+}
+
+interface AlternateCandidate {
+  mpn: string;
+  manufacturer: string;
+  bom_item_id: string;
+  is_preferred: boolean;
+  description: string;
+  suppliers: AlternateSupplier[];
+}
+
+interface AlternateGroup {
+  cpn: string;
+  required_qty: number;
+  alternates: AlternateCandidate[];
+}
+
+interface AlternateRow {
+  cpn: string;
+  required_qty: number;
+  mpn: string;
+  manufacturer: string;
+  bom_item_id: string;
+  description: string;
+  suppliers: AlternateSupplier[];
 }
 
 export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayload }: StageExecutionOutputProps) {
@@ -28,6 +63,13 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
   const [pendingEdits, setPendingEdits] = useState<Record<string, Record<string, unknown>>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [qualityFilter, setQualityFilter] = useState<QualityFilter>('all');
+  const gridRef = useRef<AgGridReact>(null);
+
+  const [alternates, setAlternates] = useState<AlternateGroup[]>([]);
+  const [alternatesLoading, setAlternatesLoading] = useState(false);
+  const [alternatesError, setAlternatesError] = useState<string | null>(null);
+  const [selectedByCpn, setSelectedByCpn] = useState<Record<string, string>>({});
 
   // Extract rows from { success, data: [...] } format or use flat array directly
   const rowData = useMemo(() => {
@@ -35,6 +77,156 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
     const nested = (rowDataPayload as unknown as { data?: Record<string, unknown>[] }).data;
     return nested ?? [];
   }, [rowDataPayload]);
+
+  const duplicateMpns = useMemo(() => findDuplicateMpns(rowData), [rowData]);
+
+  // KPI tile clicks filter the grid via AG Grid's external filter hooks.
+  const isExternalFilterPresent = useCallback(() => qualityFilter !== 'all', [qualityFilter]);
+  const doesExternalFilterPass = useCallback(
+    (node: IRowNode) => {
+      const row = node.data as Record<string, unknown> | undefined;
+      if (!row) { return true; }
+      if (qualityFilter === 'missingCpn') {
+        return row.cpn === null || row.cpn === undefined || row.cpn === '';
+      }
+      if (qualityFilter === 'duplicateMpn') {
+        return duplicateMpns.has(String(row.mpn ?? ''));
+      }
+      if (qualityFilter === 'qtyMismatch') {
+        return row.bom_qty !== row.required_qty;
+      }
+      return true;
+    },
+    [qualityFilter, duplicateMpns],
+  );
+
+  useEffect(() => {
+    gridRef.current?.api?.onFilterChanged();
+  }, [qualityFilter]);
+
+  // Fires automatically whenever the incoming HITL context type is 'alternates' —
+  // no user-triggered toggle; the SSE event itself decides which data set to show.
+  useEffect(() => {
+    if (hitlContextData.type !== 'alternates') { return; }
+
+    setAlternatesLoading(true);
+    setAlternatesError(null);
+
+    fetch(`${PYTHON_BRIDGE}/api/bom/alternatives/${hitlContextData.rfqId}`)
+      .then(async (r) => {
+        const json = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error((json as { detail?: string }).detail ?? `Server error ${r.status}`);
+        }
+        return json as { data: AlternateGroup[] };
+      })
+      .then((json) => {
+        const groups = json.data ?? [];
+        setAlternates(groups);
+
+        const preferred: Record<string, string> = {};
+        for (const group of groups) {
+          const pref = group.alternates.find((a) => a.is_preferred);
+          if (pref) { preferred[group.cpn] = pref.mpn; }
+        }
+        setSelectedByCpn(preferred);
+      })
+      .catch((err) => {
+        setAlternatesError(err instanceof Error ? err.message : 'Failed to load alternates');
+      })
+      .finally(() => setAlternatesLoading(false));
+  }, [hitlContextData.type, hitlContextData.rfqId]);
+
+  const alternateRows = useMemo<AlternateRow[]>(
+    () =>
+      alternates.flatMap((group) =>
+        group.alternates.map((alt) => ({
+          cpn: group.cpn,
+          required_qty: group.required_qty,
+          mpn: alt.mpn,
+          manufacturer: alt.manufacturer,
+          bom_item_id: alt.bom_item_id,
+          description: alt.description,
+          suppliers: alt.suppliers,
+        })),
+      ),
+    [alternates],
+  );
+
+  const handleSelectAlternate = useCallback(
+    async (cpn: string, mpn: string) => {
+      const previous = selectedByCpn[cpn];
+      setSelectedByCpn((prev) => ({ ...prev, [cpn]: mpn }));
+
+      try {
+        const res = await fetch(
+          `${PYTHON_BRIDGE}/api/bom/alternatives/${hitlContextData.rfqId}/select`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cpn, mpn }),
+          },
+        );
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as { detail?: string }).detail ?? `Server error ${res.status}`);
+        }
+      } catch (err) {
+        setSelectedByCpn((prev) => ({ ...prev, [cpn]: previous }));
+        setAlternatesError(err instanceof Error ? err.message : 'Selection failed');
+      }
+    },
+    [selectedByCpn, hitlContextData.rfqId],
+  );
+
+  const alternateColumnDefs = useMemo<ColDef[]>(
+    () => [
+      { field: 'bom_item_id', hide: true },
+      { field: 'cpn', headerName: 'CPN', width: 110, pinned: 'left', filter: true },
+      { field: 'required_qty', headerName: 'Req Qty', type: 'numericColumn', width: 100 },
+      { field: 'manufacturer', headerName: 'Manufacturer', width: 140 },
+      { field: 'mpn', headerName: 'MPN', width: 130, filter: true },
+      { field: 'description', headerName: 'Description', minWidth: 200, flex: 1 },
+      {
+        headerName: 'Suppliers',
+        minWidth: 260,
+        flex: 1,
+        cellRenderer: (params: { data?: AlternateRow }) => {
+          const suppliers = params.data?.suppliers ?? [];
+          if (suppliers.length === 0) { return '—'; }
+          return (
+            <div className="text-[11px] leading-tight py-1 space-y-0.5">
+              {suppliers.map((s) => (
+                <div key={s.supplier}>
+                  {s.supplier} — ${s.price} · MOQ {s.moq} · {s.lead_time} · {s.stock} in stock
+                </div>
+              ))}
+            </div>
+          );
+        },
+      },
+      {
+        headerName: 'Select',
+        width: 90,
+        pinned: 'right',
+        cellRenderer: (params: { data?: AlternateRow }) => {
+          const row = params.data;
+          if (!row) { return null; }
+          return (
+            <input
+              type="radio"
+              name={`alt-select-${row.cpn}`}
+              checked={selectedByCpn[row.cpn] === row.mpn}
+              onChange={() => { void handleSelectAlternate(row.cpn, row.mpn); }}
+              aria-label={`Select ${row.mpn} for ${row.cpn}`}
+            />
+          );
+        },
+      },
+    ],
+    [selectedByCpn, handleSelectAlternate],
+  );
 
   const submitAction = async (isApproved: boolean) => {
     setIsSubmitting(true);
@@ -82,19 +274,70 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
     }
   };
 
+  const handleDownloadExcel = useCallback(() => {
+    const isAlternates = hitlContextData.type === 'alternates';
+    const exportRows = isAlternates
+      ? alternateRows.map(({ suppliers, ...rest }) => ({
+          ...rest,
+          suppliers: suppliers
+            .map((s) => `${s.supplier} $${s.price} MOQ${s.moq} ${s.lead_time} qty${s.stock}`)
+            .join('; '),
+        }))
+      : rowData.map(({ bom_item_id: _bomItemId, ...rest }) => rest);
+
+    if (exportRows.length === 0) { return; }
+
+    const worksheet = utils.json_to_sheet(exportRows);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'BOM');
+    writeFile(workbook, `bom-${hitlContextData.rfqId}-${hitlContextData.type}.xlsx`);
+  }, [hitlContextData, rowData, alternateRows]);
+
+  const exportRowCount = hitlContextData.type === 'alternates' ? alternateRows.length : rowData.length;
+
   const pendingCount = Object.keys(pendingEdits).length;
 
   const columnDefs = useMemo<ColDef[]>(() => [
     { field: 'bom_item_id', hide: true, editable: false },
     { field: 'item_num', headerName: '#', width: 70, pinned: 'left', sort: 'asc', editable: false },
-    { field: 'cpn', headerName: 'CPN', width: 110, pinned: 'left', filter: true },
-    { field: 'mpn', headerName: 'MPN', width: 130, pinned: 'left', filter: true },
+    {
+      field: 'cpn',
+      headerName: 'CPN',
+      width: 110,
+      pinned: 'left',
+      filter: true,
+      // Missing CPN is the most common intake defect — flag the cell amber
+      cellStyle: (params) =>
+        params.value === null || params.value === undefined || params.value === ''
+          ? { backgroundColor: 'rgba(245,158,11,0.12)', borderLeft: '2px solid rgba(245,158,11,0.5)' }
+          : null,
+    },
+    {
+      field: 'mpn',
+      headerName: 'MPN',
+      width: 130,
+      pinned: 'left',
+      filter: true,
+      cellStyle: (params) =>
+        duplicateMpns.has(String(params.value ?? ''))
+          ? { backgroundColor: 'rgba(239,68,68,0.12)', borderLeft: '2px solid rgba(239,68,68,0.5)' }
+          : null,
+    },
     { field: 'mfr', headerName: 'Manufacturer', width: 120 },
     { field: 'description', headerName: 'Description', minWidth: 200, flex: 1 },
     { field: 'bom_qty', headerName: 'BOM Qty', type: 'numericColumn', width: 100 },
-    { field: 'required_qty', headerName: 'Req Qty', type: 'numericColumn', width: 100 },
+    {
+      field: 'required_qty',
+      headerName: 'Req Qty',
+      type: 'numericColumn',
+      width: 100,
+      cellStyle: (params) =>
+        params.data && params.data.bom_qty !== params.data.required_qty
+          ? { backgroundColor: 'rgba(245,158,11,0.12)' }
+          : null,
+    },
     { field: 'uom', headerName: 'UOM', width: 80 },
-  ], []);
+  ], [duplicateMpns]);
 
   return (
     <div className="flex flex-col h-full w-full bg-[#0b0f19] text-white p-4 font-sans">
@@ -114,12 +357,19 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
         )}
       </div>
 
+      {hitlContextData.type === 'preview' && (
+        <BomQualityStrip rows={rowData} active={qualityFilter} onSelect={setQualityFilter} />
+      )}
+
       <div className="flex-1 min-h-0 w-full mb-4 bg-[#090d16] rounded-md border border-border/10 overflow-hidden">
-        {hitlContextData.type === 'preview' ? (
+        {hitlContextData.type === 'preview' && (
           <div className="ag-theme-alpine-dark w-full h-full">
             <AgGridReact
+              ref={gridRef}
               rowData={rowData}
               columnDefs={columnDefs}
+              isExternalFilterPresent={isExternalFilterPresent}
+              doesExternalFilterPass={doesExternalFilterPass}
               defaultColDef={{
                 sortable: true,
                 filter: true,
@@ -138,7 +388,37 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
               enableCellTextSelection={true}
             />
           </div>
-        ) : (
+        )}
+
+        {hitlContextData.type === 'alternates' && (
+          alternatesLoading ? (
+            <div className="flex items-center justify-center h-full text-xs font-mono text-muted-foreground">
+              <SpinnerGap className="h-4 w-4 animate-spin mr-2" />
+              Loading alternate manufacturers...
+            </div>
+          ) : alternateRows.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-xs font-mono text-muted-foreground p-6 text-center">
+              No alternates found for this RFQ.
+            </div>
+          ) : (
+            <div className="ag-theme-alpine-dark w-full h-full">
+              <AgGridReact
+                rowData={alternateRows}
+                columnDefs={alternateColumnDefs}
+                defaultColDef={{
+                  sortable: true,
+                  filter: true,
+                  resizable: true,
+                }}
+                pagination={true}
+                paginationPageSize={25}
+                enableCellTextSelection={true}
+              />
+            </div>
+          )
+        )}
+
+        {hitlContextData.type === 'approval' && (
           <div className="flex items-center justify-center h-full text-xs font-mono text-muted-foreground p-6 text-center">
             Simple validation requested. Review tracking files and verify execution path via clearance toggles.
           </div>
@@ -151,10 +431,26 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
         </p>
       )}
 
+      {alternatesError && (
+        <p className="mb-3 text-xs text-red-400 bg-red-950/40 border border-red-900/50 rounded px-3 py-2">
+          {alternatesError}
+        </p>
+      )}
+
       <div className="flex justify-between items-center gap-3 pt-2 border-t border-border/10">
-        <div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleDownloadExcel}
+            disabled={exportRowCount === 0}
+            className="px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-xs font-semibold rounded-md transition disabled:opacity-50 flex items-center gap-1.5"
+          >
+            <FileXls className="h-3.5 w-3.5" />
+            Download Excel
+          </button>
           {pendingCount > 0 && (
             <button
+              type="button"
               onClick={() => { void handleSaveChanges(); }}
               disabled={isSaving}
               className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-xs font-semibold rounded-md text-black transition disabled:opacity-50 flex items-center gap-1.5"
@@ -172,6 +468,7 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
         </div>
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={() => { void submitAction(false); }}
             disabled={isSubmitting}
             className="px-4 py-2 bg-red-600/90 hover:bg-red-700 text-xs font-semibold rounded-md transition disabled:opacity-50"

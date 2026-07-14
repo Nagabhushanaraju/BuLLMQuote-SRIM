@@ -51,7 +51,8 @@ export function RfqIntakeUploadModal({ open, rfqId, onClose, onSuccess }: RfqInt
       formData.append('volume_file', volumeFile);
       formData.append('rfq_id', rfqId.trim());
 
-      const response = await fetch('http://192.168.1.27:3000/api/rfq/upload', {
+      const RFQ_UPLOAD = (import.meta.env.VITE_RFQ_UPLOAD_URL ?? 'http://192.168.1.27:3000').replace(/\/$/, '');
+      const response = await fetch(`${RFQ_UPLOAD}/api/rfq/upload`, {
         method: 'POST',
         body: formData,
       });

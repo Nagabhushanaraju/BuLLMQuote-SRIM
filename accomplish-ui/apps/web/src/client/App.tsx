@@ -23,6 +23,7 @@ import { RfqIntakeUploadModal } from './components/rfq/RfqIntakeUploadModal';
 import { RfqVersionSelectModal } from './components/rfq/RfqVersionSelectModal';
 import type { RfqFileVersion } from './components/rfq/RfqVersionSelectModal';
 import { LocalSessionStatusBar } from './components/layout/LocalSessionStatusBar';
+import { AgentActivityStrip } from './components/execution/AgentActivityStrip';
 // import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 type AppStatus = 'loading' | 'ready' | 'error';
@@ -154,7 +155,7 @@ const validateRfqId = async (rfqId: string) => {
   interface HitlContext {
   rfqId: string;
   stage: string;
-  type: 'preview' | 'approval';
+  type: 'preview' | 'approval' | 'alternates';
   }
 
   // Fallback structural placeholder to satisfy component interface definitions
@@ -323,8 +324,13 @@ const validateRfqId = async (rfqId: string) => {
       {/* ─── CANVAS GRID WRAPPER (Three Columns) ─────────────────────────── */}
       <div className="flex flex-1 min-h-0 w-full divide-x divide-slate-800/60">
         
-        {/* COLUMN 1: SIDEBAR CONTAINER & WORKFLOW MANAGER */}
-        <div className="w-1/3 h-full flex flex-col justify-between bg-[#030d1d] px-5 py-6">
+        {/* COLUMN 1: SIDEBAR CONTAINER & WORKFLOW MANAGER — collapses when HITL is active */}
+        <motion.div
+          animate={{ width: hitlContext ? '0%' : '33.333%', opacity: hitlContext ? 0 : 1 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+          className="h-full flex flex-col justify-between bg-[#030d1d] px-5 py-6 overflow-hidden"
+          style={{ minWidth: 0 }}
+        >
           
           {/* Top Panel: Workflow Sequence Control Card */}
           <div className="flex-1 flex flex-col justify-start">
@@ -443,11 +449,11 @@ const validateRfqId = async (rfqId: string) => {
             </button>
           </div>
 
-        </div>
+        </motion.div>
 
-        {/* COLUMN 2: CENTRAL AI ASSISTANT CHAT CONTAINER — collapses when HITL is active */}
+        {/* COLUMN 2: CENTRAL AI ASSISTANT CHAT CONTAINER — stays visible during HITL */}
         <motion.div
-          animate={{ width: hitlContext ? '0%' : '33.333%', opacity: hitlContext ? 0 : 1 }}
+          animate={{ width: '33.333%', opacity: 1 }}
           transition={{ duration: 0.35, ease: 'easeInOut' }}
           className="h-full flex flex-col overflow-hidden bg-[#020B18]"
           style={{ minWidth: 0 }}
@@ -480,6 +486,9 @@ const validateRfqId = async (rfqId: string) => {
               {hitlContext ? 'HITL_HALT' : currentWorkflowStage}
             </div>
           </div>
+
+          {/* SOP: MCP Operational Status Badges — pipeline stage chips */}
+          <AgentActivityStrip currentStage={currentWorkflowStage} hitlActive={Boolean(hitlContext)} />
 
           {/* Dynamic render area tracking layout sequence state switches or grid injections */}
           <div className="flex-1 min-h-0 w-full rounded-xl border border-slate-800/60 bg-[#020b18]/40 overflow-hidden shadow-inner">
