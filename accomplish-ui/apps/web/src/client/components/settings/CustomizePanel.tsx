@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Palette, Sparkle } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
@@ -22,11 +23,16 @@ export function CustomizePanel() {
   const initial = getAppearance();
   const [accent, setAccentState] = useState<AccentId>(initial.accent);
   const [dim, setDimState] = useState(initial.dim);
-  const [motion, setMotionState] = useState(initial.motion);
+  const [motionEnabled, setMotionState] = useState(initial.motion);
   const [pattern, setPatternState] = useState<PatternId>(initial.pattern);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 space-y-5">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      className="rounded-lg border border-border bg-card p-5 space-y-5 shadow-lg shadow-primary/5"
+    >
       <div className="flex items-center gap-2 font-medium text-foreground">
         <Palette className="h-4 w-4 text-muted-foreground" />
         Customize appearance
@@ -42,7 +48,9 @@ export function CustomizePanel() {
         </div>
         <div className="ml-4 flex items-center gap-2">
           {ACCENTS.map((a) => (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.16, y: -2 }}
+              whileTap={{ scale: 0.9 }}
               key={a.id}
               type="button"
               aria-label={a.label}
@@ -78,7 +86,7 @@ export function CustomizePanel() {
       <ToggleRow
         title="Animations"
         description="Turn interface motion and transitions on or off."
-        checked={motion}
+        checked={motionEnabled}
         onChange={(v) => {
           setMotion(v);
           setMotionState(v);
@@ -98,7 +106,9 @@ export function CustomizePanel() {
         </div>
         <div className="ml-4 flex items-center gap-1 rounded-md border border-border p-0.5">
           {PATTERNS.map((p) => (
-            <button
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
               key={p.id}
               type="button"
               onClick={() => {
@@ -113,11 +123,11 @@ export function CustomizePanel() {
               )}
             >
               {p.label}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -135,7 +145,8 @@ function ToggleRow({ title, description, checked, onChange }: ToggleRowProps) {
         <div className="text-sm font-medium text-foreground">{title}</div>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
-      <button
+      <motion.button
+        whileTap={{ scale: 0.92 }}
         type="button"
         role="switch"
         aria-checked={checked}
@@ -145,13 +156,14 @@ function ToggleRow({ title, description, checked, onChange }: ToggleRowProps) {
           checked ? 'bg-primary' : 'bg-input',
         )}
       >
-        <span
+        <motion.span
+          layout
           className={cn(
             'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
             checked ? 'translate-x-5' : 'translate-x-0',
           )}
         />
-      </button>
+      </motion.button>
     </div>
   );
 }

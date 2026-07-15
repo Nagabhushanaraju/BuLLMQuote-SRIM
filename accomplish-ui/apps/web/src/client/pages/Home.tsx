@@ -1,12 +1,17 @@
+import { lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { TaskInputBar } from '@/components/landing/TaskInputBar';
-import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { springs } from '@/lib/animations';
 import { PlusMenu } from '@/components/landing/PlusMenu';
 import { useHomePage } from './home/useHomePage';
 import { FavoritesSection } from './home/FavoritesSection';
 import { ExamplesSection } from './home/ExamplesSection';
+
+const SettingsDialog = lazy(async () => {
+  const module = await import('@/components/layout/SettingsDialog');
+  return { default: module.SettingsDialog };
+});
 
 export function HomePage() {
   const { t } = useTranslation('home');
@@ -42,25 +47,29 @@ export function HomePage() {
 
   return (
     <>
-      <SettingsDialog
-        open={showSettingsDialog}
-        onOpenChange={handleSettingsDialogChange}
-        onApiKeySaved={handleApiKeySaved}
-        initialTab={settingsInitialTab}
-      />
+      {showSettingsDialog && (
+        <Suspense fallback={null}>
+          <SettingsDialog
+            open={showSettingsDialog}
+            onOpenChange={handleSettingsDialogChange}
+            onApiKeySaved={handleApiKeySaved}
+            initialTab={settingsInitialTab}
+          />
+        </Suspense>
+      )}
 
-      <div className="relative flex h-full flex-col overflow-hidden bg-[#020B18]">
+      <div className="srim-theme-shell relative flex h-full flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {/* Orange blob — top left, mirrors logo left half */}
-          <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-orange-500/[0.18] blur-[160px]" />
+          <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-orange-500/[0.12] blur-[160px]" />
           {/* Amber secondary — blends into orange */}
-          <div className="absolute -left-10 top-[15%] h-[360px] w-[360px] rounded-full bg-amber-400/[0.12] blur-[130px]" />
+          <div className="absolute -left-10 top-[15%] h-[360px] w-[360px] rounded-full bg-amber-400/[0.08] blur-[130px]" />
           {/* Blue blob — top right, mirrors logo right half */}
-          <div className="absolute -right-36 -top-20 h-[560px] w-[560px] rounded-full bg-blue-500/[0.18] blur-[155px]" />
+          <div className="absolute -right-36 -top-20 h-[560px] w-[560px] rounded-full bg-blue-500/[0.12] blur-[155px]" />
           {/* Cyan secondary — blends into blue */}
-          <div className="absolute right-[5%] top-[30%] h-[320px] w-[320px] rounded-full bg-cyan-400/[0.10] blur-[120px]" />
+          <div className="absolute right-[5%] top-[30%] h-[320px] w-[320px] rounded-full bg-cyan-400/[0.08] blur-[120px]" />
           {/* Deep blue — bottom fade */}
-          <div className="absolute bottom-[-10%] left-1/2 h-[400px] w-[500px] -translate-x-1/2 rounded-full bg-blue-900/[0.35] blur-[140px]" />
+          <div className="absolute bottom-[-10%] left-1/2 h-[400px] w-[500px] -translate-x-1/2 rounded-full bg-blue-900/[0.18] blur-[140px]" />
         </div>
 
         <div className="flex flex-1 flex-col overflow-y-auto px-4 sm:px-6">
@@ -108,7 +117,6 @@ export function HomePage() {
                         onSkillSelect={handleSkillSelect}
                         onOpenSettings={handleOpenSettings}
                         onAttachFiles={handleAttachFiles}
-                        onSelectFolder={setWorkingDirectory}
                         disabled={isLoading}
                         attachmentCount={attachments.length}
                         maxAttachments={MAX_FILES}

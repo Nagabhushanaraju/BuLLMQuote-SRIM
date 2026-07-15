@@ -27,7 +27,7 @@ interface FollowUpInputProps {
   isLoading: boolean;
   currentTask: Task;
   hasSession: string | boolean | null | undefined;
-  onOpenSettings: (tab: 'providers' | 'voice' | 'skills' | 'integrations') => void;
+  onOpenSettings: (tab: 'providers' | 'skills') => void;
   onOpenModelSettings: () => void;
   onOpenSpeechSettings: () => void;
 }

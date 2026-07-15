@@ -1,5 +1,4 @@
 import { createHashRouter, Navigate, redirect } from 'react-router';
-import { App } from './App';
 import { HomePage } from './pages/Home';
 import ExecutionPage from './pages/Execution';
 import { LoginPage } from './pages/LoginPage';
@@ -25,12 +24,23 @@ export const router = createHashRouter([
   // Protected app routes
   {
     path: '/',
-    Component: App,
+    lazy: async () => {
+      const { App } = await import('./App');
+      return { Component: App };
+    },
     errorElement: <RouteErrorFallback />,
     loader: requireAuth,
     children: [
-      { index: true, Component: HomePage, errorElement: <RouteErrorFallback /> },
-      { path: 'execution/:id', Component: ExecutionPage, errorElement: <RouteErrorFallback /> },
+      {
+        index: true,
+        Component: HomePage,
+        errorElement: <RouteErrorFallback />,
+      },
+      {
+        path: 'execution/:id',
+        Component: ExecutionPage,
+        errorElement: <RouteErrorFallback />,
+      },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

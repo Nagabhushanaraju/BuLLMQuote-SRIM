@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus } from '@phosphor-icons/react';
-import type { Skill, McpConnector } from '@accomplish_ai/agent-core/common';
+import type { Skill } from '@accomplish_ai/agent-core/common';
 import { DropdownMenu, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { PlusMenuItems } from './PlusMenuItems';
 import { CreateSkillModal } from '@/components/skills/CreateSkillModal';
@@ -11,9 +11,8 @@ const logger = createLogger('PlusMenu');
 
 interface PlusMenuProps {
   onSkillSelect: (command: string) => void;
-  onOpenSettings: (tab: 'skills' | 'integrations') => void;
+  onOpenSettings: (tab: 'skills') => void;
   onAttachFiles?: () => void;
-  onSelectFolder?: (folderPath: string) => void;
   disabled?: boolean;
   attachmentCount?: number;
   maxAttachments?: number;
@@ -23,7 +22,6 @@ export function PlusMenu({
   onSkillSelect,
   onOpenSettings,
   onAttachFiles,
-  onSelectFolder,
   disabled,
   attachmentCount = 0,
   maxAttachments = 5,
@@ -31,7 +29,6 @@ export function PlusMenu({
   const { t } = useTranslation('home');
   const [open, setOpen] = useState(false);
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [connectors, setConnectors] = useState<McpConnector[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -42,10 +39,6 @@ export function PlusMenu({
         .then((skills) => setSkills(skills.filter((s) => !s.isHidden)))
         .catch((err) => logger.error('Failed to load skills:', err));
 
-      window.accomplish
-        .getConnectors()
-        .then(setConnectors)
-        .catch((err) => logger.error('Failed to load connectors:', err));
     }
   }, [open]);
 
@@ -81,36 +74,6 @@ export function PlusMenu({
     setCreateModalOpen(true);
   };
 
-  const handleToggleConnector = useCallback(async (id: string, enabled: boolean) => {
-    if (!window.accomplish) return;
-    try {
-      await window.accomplish.setConnectorEnabled(id, enabled);
-      setConnectors((prev) => prev.map((c) => (c.id === id ? { ...c, isEnabled: enabled } : c)));
-    } catch (err) {
-      logger.error('Failed to toggle connector:', err);
-    }
-  }, []);
-
-  const handleManageConnectors = () => {
-    setOpen(false);
-    onOpenSettings('integrations');
-  };
-
-  const handleSelectFolder = useCallback(async () => {
-    setOpen(false);
-    const accomplish = window.accomplish;
-    if (!accomplish?.pickFolder) {
-      return;
-    }
-    try {
-      const folderPath = await accomplish.pickFolder();
-      if (folderPath) {
-        onSelectFolder?.(folderPath);
-      }
-    } catch (err) {
-      logger.error('Failed to pick folder:', err);
-    }
-  }, [onSelectFolder]);
 
   return (
     <>
@@ -127,7 +90,6 @@ export function PlusMenu({
         </DropdownMenuTrigger>
         <PlusMenuItems
           skills={skills}
-          connectors={connectors}
           attachmentCount={attachmentCount}
           maxAttachments={maxAttachments}
           isRefreshing={isRefreshing}
@@ -139,19 +101,10 @@ export function PlusMenu({
                 }
               : undefined
           }
-          onSelectFolder={
-            onSelectFolder
-              ? () => {
-                  void handleSelectFolder();
-                }
-              : undefined
-          }
           onSkillSelect={handleSkillSelect}
           onManageSkills={handleManageSkills}
           onCreateNewSkill={handleCreateNewSkill}
           onRefresh={handleRefresh}
-          onToggleConnector={handleToggleConnector}
-          onManageConnectors={handleManageConnectors}
         />
       </DropdownMenu>
     </>

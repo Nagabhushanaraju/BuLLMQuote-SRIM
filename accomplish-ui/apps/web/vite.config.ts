@@ -67,8 +67,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-    strictPort: true,
+    port: Number(process.env.PORT ?? process.env.VITE_PORT ?? 5180),
+    strictPort: false,
     host: '0.0.0.0',
   },
   base: './',

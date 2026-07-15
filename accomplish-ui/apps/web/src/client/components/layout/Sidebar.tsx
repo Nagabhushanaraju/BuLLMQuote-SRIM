@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ConversationListItem from './ConversationListItem';
 import SettingsDialog from './SettingsDialog';
-import WorkspaceSelector from './WorkspaceSelector';
 import { Gear, ChatText, MagnifyingGlass } from '@phosphor-icons/react';
 import { DaemonStatusDot } from '@/components/DaemonStatusDot';
 import logoImage from '/assets/digibull-logo.png';
@@ -19,16 +18,7 @@ import logoImage from '/assets/digibull-logo.png';
 export default function Sidebar() {
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<
-    | 'providers'
-    | 'voice'
-    | 'skills'
-    | 'integrations'
-    | 'workspaces'
-    | 'scheduler'
-    | 'general'
-    | 'about'
-  >('providers');
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'providers' | 'skills' | 'general' | 'about'>('providers');
   const { tasks, loadTasks, updateTaskStatus, addTaskUpdate, openLauncher } = useTaskStore();
   const accomplish = getAccomplish();
   const { t } = useTranslation('sidebar');
@@ -61,16 +51,6 @@ export default function Sidebar() {
   return (
     <>
       <div className="flex h-screen w-[260px] flex-col border-r border-white/[0.07] bg-[#020B18] pt-12">
-        {/* Workspace Selector */}
-        <div className="px-3 pt-3 pb-1">
-          <WorkspaceSelector
-            onManageWorkspaces={() => {
-              setSettingsInitialTab('workspaces');
-              setShowSettings(true);
-            }}
-          />
-        </div>
-
         {/* Action Buttons */}
         <div className="px-3 py-3 border-b border-white/[0.07] flex gap-2">
           <Button

@@ -16,11 +16,18 @@ export function useProviderSettings() {
   const fetchSettings = useCallback(async () => {
     try {
       const accomplish = getAccomplish();
-      const data = (await accomplish.getProviderSettings()) as ProviderSettings;
+      const data = (await Promise.race([
+        accomplish.getProviderSettings(),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Provider settings request timed out')), 5000);
+        }),
+      ])) as ProviderSettings;
       setSettings(data);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
+      // Keep the settings shell usable when the daemon is still starting.
+      setSettings({ activeProviderId: null, connectedProviders: {} } as ProviderSettings);
     } finally {
       setLoading(false);
     }

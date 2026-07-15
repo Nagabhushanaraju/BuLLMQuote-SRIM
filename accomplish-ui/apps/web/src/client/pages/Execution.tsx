@@ -67,7 +67,7 @@ export default function ExecutionPage() {
         onApiKeySaved={s.handleApiKeySaved}
         initialTab={s.settingsInitialTab}
       />
-      <div className="h-full flex flex-col bg-background relative">
+      <div className="srim-theme-shell h-full flex flex-col relative">
         <ExecutionHeader prompt={s.currentTask.prompt} status={s.currentTask.status} />
 
         <BrowserInstallModal
@@ -165,7 +165,7 @@ export default function ExecutionPage() {
 
         {/* Running — stop button */}
         {s.currentTask.status === 'running' && !s.permissionRequest && (
-          <div className="flex-shrink-0 border-t border-border bg-card/50 px-6 py-4">
+          <div className="flex-shrink-0 border-t border-border bg-background/75 px-6 py-4">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5">
                 <input

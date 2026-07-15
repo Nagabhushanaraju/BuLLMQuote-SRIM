@@ -26,7 +26,7 @@ export function LocalSessionStatusBar() {
   }, []);
 
   return (
-    <div className="flex h-7 w-full shrink-0 items-center justify-between border-t border-slate-800/60 bg-[#020b18] px-4">
+    <div className="srim-session-bar flex h-7 w-full shrink-0 items-center justify-between border-t border-slate-800/60 bg-[#020b18] px-4">
       {/* Left — session timer */}
       <div className="flex items-center gap-2">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />

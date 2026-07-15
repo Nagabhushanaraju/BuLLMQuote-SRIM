@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { SignOut } from '@phosphor-icons/react';
@@ -7,16 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { ProviderId } from '@accomplish_ai/agent-core/common';
 import { ProviderGrid } from '@/components/settings/ProviderGrid';
 import { ProviderSettingsPanel } from '@/components/settings/ProviderSettingsPanel';
-import { SpeechSettingsForm } from '@/components/settings/SpeechSettingsForm';
 import { SkillsPanel, AddSkillDropdown } from '@/components/settings/skills';
-import { WorkspacesPanel } from '@/components/settings/WorkspacesPanel';
 import { AboutTab } from '@/components/settings/AboutTab';
 import { GeneralTab } from '@/components/settings/GeneralTab';
 import { SandboxSection } from '@/components/settings/SandboxSection';
-import { IntegrationsPanel } from '@/components/settings/integrations';
-import { SchedulerPanel } from '@/components/settings/scheduler';
-
-import { CloudBrowsersPanel } from '@/components/settings/CloudBrowsersPanel';
 import { cn } from '@/lib/utils';
 import { logout } from '@/lib/session';
 import logoImage from '/assets/digibull-logo.png';
@@ -51,7 +45,7 @@ export function SettingsDialog({
     return (
       <Dialog open={open} onOpenChange={s.handleOpenChange}>
         <DialogContent
-          className="max-w-4xl w-full h-[80vh] max-h-[720px] flex flex-col overflow-hidden p-0"
+          className="srim-settings-dialog max-w-4xl w-full h-[80vh] max-h-[720px] flex flex-col overflow-hidden p-0"
           data-testid="settings-dialog"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -69,15 +63,15 @@ export function SettingsDialog({
   return (
     <Dialog open={open} onOpenChange={s.handleOpenChange}>
       <DialogContent
-        className="max-w-4xl w-full h-[80vh] max-h-[720px] flex overflow-hidden p-0"
+        className="srim-settings-dialog max-w-4xl w-full h-[80vh] max-h-[720px] flex overflow-hidden p-0"
         data-testid="settings-dialog"
         onOpenAutoFocus={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
+        <LayoutGroup id="srim-settings-navigation">
         <nav className="w-48 shrink-0 border-r border-border bg-muted/30 p-3 flex flex-col h-full">
           <div className="flex flex-col gap-1 flex-1 overflow-y-auto min-h-0">
             <div className="px-3 py-2 mb-1 flex items-center gap-2">
@@ -93,15 +87,20 @@ export function SettingsDialog({
                 key={tab.id}
                 onClick={() => s.setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
+                  'relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
                   s.activeTab === tab.id
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
                 )}
-              >
-                <tab.icon className="h-4 w-4 shrink-0" />
-                {t(tab.labelKey)}
-              </button>
+                >
+                {s.activeTab === tab.id && (
+                  <motion.span layoutId="active-settings-tab" className="absolute inset-0 rounded-lg bg-background shadow-sm" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />
+                )}
+                <span className="relative z-10 flex items-center gap-2.5">
+                  <tab.icon className="h-4 w-4 shrink-0" />
+                  {t(tab.labelKey)}
+                </span>
+                </button>
             ))}
           </div>
           <div className="pt-2 border-t border-border shrink-0">
@@ -114,6 +113,7 @@ export function SettingsDialog({
             </button>
           </div>
         </nav>
+        </LayoutGroup>
 
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-6 pt-5 pb-3">
@@ -170,6 +170,15 @@ export function SettingsDialog({
                 )}
               </AnimatePresence>
 
+              <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={s.activeTab}
+                initial={{ opacity: 0, y: 12, filter: 'blur(3px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }}
+                transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                className="srim-settings-tab-content"
+              >
               {s.activeTab === 'providers' && (
                 <div className="space-y-6">
                   <section>
@@ -212,31 +221,6 @@ export function SettingsDialog({
                   <SkillsPanel refreshTrigger={s.skillsRefreshTrigger} />
                 </div>
               )}
-              {s.activeTab === 'browsers' && (
-                <div className="space-y-6">
-                  <CloudBrowsersPanel />
-                </div>
-              )}
-              {s.activeTab === 'integrations' && (
-                <div className="space-y-6">
-                  <IntegrationsPanel />
-                </div>
-              )}
-              {s.activeTab === 'scheduler' && (
-                <div className="space-y-6">
-                  <SchedulerPanel />
-                </div>
-              )}
-              {s.activeTab === 'workspaces' && (
-                <div className="space-y-6">
-                  <WorkspacesPanel />
-                </div>
-              )}
-              {s.activeTab === 'voice' && (
-                <div className="space-y-6">
-                  <SpeechSettingsForm />
-                </div>
-              )}
               {s.activeTab === 'general' && (
                 <GeneralTab
                   notificationsEnabled={s.notificationsEnabled}
@@ -246,6 +230,8 @@ export function SettingsDialog({
                 />
               )}
               {s.activeTab === 'about' && <AboutTab appVersion={s.appVersion} />}
+              </motion.div>
+              </AnimatePresence>
 
               <div className="mt-4 flex items-center justify-between">
                 <div>

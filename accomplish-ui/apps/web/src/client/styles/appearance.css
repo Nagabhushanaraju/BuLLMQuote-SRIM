@@ -94,6 +94,40 @@
   z-index: 0;
   pointer-events: none;
 }
+
+/* SRIM command surface: keep the custom console responsive to Settings. */
+[data-accent] .text-primary { color: hsl(var(--primary)) !important; }
+[data-accent] .bg-primary { background-color: hsl(var(--primary)) !important; }
+[data-accent] .border-primary { border-color: hsl(var(--primary)) !important; }
+[data-accent] .ring-primary { --tw-ring-color: hsl(var(--ring)) !important; }
+[data-accent] .srim-theme-shell {
+  background-color: hsl(var(--srim-shell));
+  color: hsl(var(--srim-text));
+}
+[data-accent] .srim-theme-panel {
+  background-color: hsl(var(--srim-panel));
+  border-color: hsl(var(--srim-border));
+  color: hsl(var(--srim-text));
+}
+[data-accent] .srim-theme-panel-soft {
+  background-color: hsl(var(--srim-panel-soft));
+  border-color: hsl(var(--srim-border));
+  color: hsl(var(--srim-text));
+}
+[data-accent] .srim-theme-muted {
+  color: hsl(var(--srim-text-muted));
+}
+[data-contrast='dim'] .bg-\[\#020B18\],
+[data-contrast='dim'] .bg-\[\#020b18\],
+[data-contrast='dim'] .bg-\[\#030d1d\],
+[data-contrast='dim'] .bg-\[\#041226\]\/50 {
+  background-color: hsl(var(--background) / 0.92) !important;
+}
+[data-pattern='stripes'] body,
+[data-pattern='dots'] body,
+[data-pattern='grid'] body {
+  background-color: hsl(var(--background));
+}
 [data-pattern='stripes'] body::before {
   background-image: repeating-linear-gradient(
     45deg,
@@ -130,4 +164,283 @@
 }
 .hover-lift:active {
   transform: translateY(0);
+}
+
+/* ── SRIM command motion language ────────────────────────────────── */
+.srim-console {
+  position: relative;
+  isolation: isolate;
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  background-image:
+    radial-gradient(circle at 50% -20%, hsl(var(--primary) / 0.18), transparent 38%),
+    linear-gradient(120deg, transparent 0%, hsl(var(--primary) / 0.035) 48%, transparent 100%);
+}
+.srim-console::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--pointer-x) var(--pointer-y), hsl(var(--primary) / .13), transparent 19rem);
+  opacity: .8;
+  transition: opacity 300ms ease;
+}
+.srim-orbit-field { opacity: .7; mix-blend-mode: screen; }
+.srim-orbit {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: min(72vw, 900px);
+  aspect-ratio: 1;
+  border: 1px solid hsl(var(--primary) / 0.12);
+  border-radius: 50%;
+  box-shadow: 0 0 80px hsl(var(--primary) / 0.05), inset 0 0 60px hsl(var(--primary) / 0.04);
+  transform-origin: center;
+}
+.srim-orbit::before,
+.srim-orbit::after {
+  content: '';
+  position: absolute;
+  inset: 11%;
+  border: 1px dashed hsl(var(--primary) / 0.1);
+  border-radius: 50%;
+}
+.srim-orbit::after { inset: 28%; border-style: solid; opacity: .65; }
+.srim-orbit-one { margin: -36vw 0 0 -36vw; }
+.srim-orbit-two { width: min(48vw, 620px); margin: -24vw 0 0 -24vw; opacity: .65; }
+.srim-signal-dot {
+  position: absolute;
+  left: calc(50% + min(24vw, 300px));
+  top: calc(48% - min(22vw, 270px));
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 18px hsl(var(--primary) / 0.9);
+}
+.srim-console::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.08), transparent);
+  transform: translateX(-100%);
+  animation: srim-sweep 9s ease-in-out infinite;
+}
+.srim-panel {
+  position: relative;
+  isolation: isolate;
+  will-change: transform, opacity;
+}
+.srim-column-shell {
+  contain: layout paint;
+}
+.srim-pane-grid {
+  display: grid;
+  gap: 0;
+  align-items: stretch;
+  background: hsl(var(--background));
+}
+.srim-pane-gutter {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--border) / 0.24);
+  transition: background-color 180ms ease;
+}
+.srim-splitter-handle {
+  position: relative;
+  width: 12px;
+  height: 72px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: ew-resize;
+  opacity: 0.08;
+  transition: opacity 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+  touch-action: none;
+}
+.srim-splitter-handle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 42px;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.68);
+  transform: translateX(-50%);
+  margin-top: -21px;
+  box-shadow: 0 0 18px hsl(var(--primary) / 0.3);
+}
+.srim-pane-gutter:hover {
+  background: hsl(var(--primary) / 0.1);
+}
+.srim-pane-gutter:hover .srim-splitter-handle,
+.srim-splitter-handle:focus-visible,
+.srim-splitter-handle:active {
+  opacity: 1;
+  outline: none;
+  background: hsl(var(--primary) / 0.12);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.28), 0 0 22px hsl(var(--primary) / 0.18);
+}
+.srim-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.42;
+  background: linear-gradient(120deg, hsl(var(--primary) / 0.06), transparent 34%, hsl(var(--primary) / 0.025));
+  animation: srim-breathe 7s ease-in-out infinite alternate;
+}
+.srim-panel-left { animation: srim-panel-in 700ms cubic-bezier(.16,1,.3,1) both; }
+.srim-chat { animation: srim-panel-in 800ms 90ms cubic-bezier(.16,1,.3,1) both; }
+.srim-output { animation: srim-panel-in 900ms 180ms cubic-bezier(.16,1,.3,1) both; }
+.srim-panel-left button { animation: srim-rise 550ms both; }
+.srim-panel-left button:nth-child(1) { animation-delay: 120ms; }
+.srim-panel-left button:nth-child(2) { animation-delay: 180ms; }
+.srim-panel-left button:nth-child(3) { animation-delay: 240ms; }
+.srim-panel-left button:nth-child(4) { animation-delay: 300ms; }
+.srim-output .srim-log > div { animation: srim-log-in 500ms both; }
+.srim-output .srim-log > div > div { animation: srim-log-in 500ms 140ms both; }
+.srim-stage-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(105deg, transparent 20%, hsl(var(--primary) / 0.18) 48%, transparent 76%);
+  transform: translateX(-120%);
+}
+.srim-stage-button:hover::before,
+.srim-stage-button:focus-visible::before { opacity: 1; animation: srim-button-sweep 900ms ease-out both; }
+.srim-stage-button[class*='border-primary']::after {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 14px hsl(var(--primary) / 0.75);
+  animation: srim-progress-pulse 1.8s ease-in-out infinite;
+}
+.srim-chat textarea:focus,
+.srim-chat input:focus {
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.55), 0 0 32px hsl(var(--primary) / 0.16);
+  transition: box-shadow 220ms ease;
+}
+.srim-composer {
+  animation: srim-composer-breathe 4.5s ease-in-out infinite;
+}
+.srim-composer-line {
+  animation: srim-composer-line 3.2s ease-in-out infinite;
+}
+.srim-auto-status { animation: srim-status-glow 2.8s ease-in-out infinite; }
+.srim-session-bar { position: relative; }
+.srim-session-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.08), transparent);
+  transform: translateX(-100%);
+  animation: srim-status-sweep 6s linear infinite;
+}
+.srim-settings-dialog {
+  position: relative;
+  animation: srim-dialog-in 420ms cubic-bezier(.16,1,.3,1) both;
+  box-shadow: 0 30px 120px -45px hsl(var(--primary) / .45), 0 0 0 1px hsl(var(--primary) / .12);
+}
+.srim-settings-dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 20%, hsl(var(--primary) / .08), transparent 80%);
+  transform: translateX(-100%);
+  animation: srim-dialog-sweep 5s ease-in-out infinite;
+}
+.srim-dropdown,
+.srim-tooltip {
+  position: relative;
+  box-shadow: 0 18px 55px -22px hsl(var(--primary) / .5), 0 0 0 1px hsl(var(--primary) / .1);
+  animation: srim-float-in 220ms cubic-bezier(.16,1,.3,1) both;
+}
+.srim-dropdown::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent, hsl(var(--primary) / .12), transparent);
+  transform: translateX(-120%);
+  animation: srim-menu-sweep 2.8s ease-in-out infinite;
+}
+@keyframes srim-panel-in { from { opacity: 0; transform: translateY(14px) scale(.992); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes srim-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes srim-log-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes srim-breathe { from { transform: translate3d(-1%, -1%, 0) scale(.98); } to { transform: translate3d(1%, 1%, 0) scale(1.02); } }
+@keyframes srim-sweep { 0%, 55% { transform: translateX(-100%); } 85%, 100% { transform: translateX(100%); } }
+@keyframes srim-button-sweep { to { transform: translateX(120%); } }
+@keyframes srim-progress-pulse { 0%, 100% { opacity: .45; transform: scaleX(.65); } 50% { opacity: 1; transform: scaleX(1); } }
+@keyframes srim-composer-breathe { 0%, 100% { box-shadow: 0 18px 60px -32px hsl(var(--foreground) / .28); } 50% { box-shadow: 0 22px 78px -34px hsl(var(--primary) / .38); } }
+@keyframes srim-composer-line { 0%, 100% { transform: translateX(-18%); opacity: .25; } 50% { transform: translateX(18%); opacity: 1; } }
+@keyframes srim-status-glow { 0%, 100% { border-color: hsl(var(--primary) / .15); } 50% { border-color: hsl(var(--primary) / .42); } }
+@keyframes srim-status-sweep { 0% { transform: translateX(-100%); } 35%, 100% { transform: translateX(100%); } }
+@keyframes srim-dialog-in { from { opacity: 0; transform: translateY(18px) scale(.97); filter: blur(5px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+@keyframes srim-dialog-sweep { 0%, 55% { transform: translateX(-100%); } 85%, 100% { transform: translateX(100%); } }
+@keyframes srim-float-in { from { opacity: 0; transform: translateY(5px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes srim-menu-sweep { 0%, 62% { transform: translateX(-120%); } 88%, 100% { transform: translateX(120%); } }
+
+[data-motion='off'] .srim-console::after,
+[data-motion='off'] .srim-console::before,
+[data-motion='off'] .srim-composer,
+[data-motion='off'] .srim-composer-line,
+[data-motion='off'] .srim-auto-status,
+[data-motion='off'] .srim-session-bar::before,
+[data-motion='off'] .srim-settings-dialog,
+[data-motion='off'] .srim-settings-dialog::before,
+[data-motion='off'] .srim-dropdown,
+[data-motion='off'] .srim-tooltip,
+[data-motion='off'] .srim-dropdown::after,
+[data-motion='off'] .srim-orbit-field,
+[data-motion='off'] .srim-panel::before,
+[data-motion='off'] .srim-panel,
+[data-motion='off'] .srim-column-shell,
+[data-motion='off'] .srim-splitter,
+[data-motion='off'] .srim-panel-left button,
+[data-motion='off'] .srim-output .srim-log > div,
+[data-motion='off'] .srim-output .srim-log > div > div {
+  animation: none !important;
+}
+[data-motion='off'] .srim-orbit-field { display: none; }
+[data-motion='off'] .srim-console::before { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .srim-console::after,
+  .srim-console::before,
+  .srim-composer,
+  .srim-composer-line,
+  .srim-auto-status,
+  .srim-session-bar::before,
+  .srim-settings-dialog,
+  .srim-settings-dialog::before,
+  .srim-dropdown,
+  .srim-tooltip,
+  .srim-dropdown::after,
+  .srim-orbit-field,
+  .srim-panel::before,
+  .srim-panel,
+  .srim-panel-left button,
+  .srim-output .srim-log > div,
+  .srim-output .srim-log > div > div { animation: none !important; }
+  .srim-stage-button::before,
+  .srim-stage-button[class*='border-primary']::after { animation: none !important; }
 }

@@ -100,7 +100,7 @@ export function initGoogleAccountListener(): () => void {
     _gwsAuthErrorUnsubscribe();
   }
 
-  const unsubscribeStatus = window.accomplish?.gws?.onStatusChanged((id, status) => {
+  const unsubscribeStatus = window.accomplish?.gws?.onStatusChanged?.((id, status) => {
     useGoogleAccountStore.getState().handleStatusChange(id, status as GoogleAccountStatus);
   });
 
@@ -108,7 +108,7 @@ export function initGoogleAccountListener(): () => void {
   // OAuth auth-error channel so missing-refresh-token and similar
   // daemon-side rejections reach the user instead of silently timing
   // out the 30s `GoogleAccountsSection` poll.
-  const unsubscribeAuthError = window.accomplish?.gws?.onAuthError(({ message }) => {
+  const unsubscribeAuthError = window.accomplish?.gws?.onAuthError?.(({ message }) => {
     logger.warn('Google account auth error:', message);
     useGoogleAccountStore.getState().setAuthError(message);
   });

@@ -1,0 +1,13 @@
+# Nagabhushana: simple Docker path for the updated repo.
+services:
+  accomplish-ui:
+    container_name: accomplish-ui
+    build:
+      context: ./accomplish-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - HOST=0.0.0.0
+      - CI=true
+    restart: unless-stopped

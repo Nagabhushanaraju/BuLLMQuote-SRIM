@@ -6,7 +6,7 @@ import type { SettingsTabId } from '@/components/layout/settings-tabs';
 
 const logger = createLogger('HomePageSettings');
 
-type SettingsTab = Extract<SettingsTabId, 'providers' | 'voice' | 'skills' | 'integrations'>;
+type SettingsTab = Extract<SettingsTabId, 'providers' | 'skills'>;
 
 interface UseHomePageSettingsParams {
   onResume: () => Promise<void>;
@@ -44,7 +44,7 @@ export function useHomePageSettings({
   }, []);
 
   const handleOpenSpeechSettings = useCallback(() => {
-    setSettingsInitialTab('voice');
+    setSettingsInitialTab('providers');
     setShowSettingsDialog(true);
   }, []);
 

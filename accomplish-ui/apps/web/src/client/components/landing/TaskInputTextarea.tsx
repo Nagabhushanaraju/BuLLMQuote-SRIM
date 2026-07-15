@@ -44,7 +44,7 @@ export function TaskInputTextarea({
             ? `slash-suggestion-${slashCommand.state.selectedIndex}`
             : undefined
         }
-        className="w-full min-h-[60px] max-h-[200px] resize-none overflow-y-auto bg-transparent text-[16px] leading-relaxed tracking-[-0.015em] text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full min-h-[72px] max-h-[220px] resize-none overflow-y-auto rounded-[14px] border border-transparent bg-background/70 px-4 py-3 text-[16px] leading-relaxed tracking-[-0.015em] text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors duration-200 focus:border-primary/25 focus:bg-background disabled:cursor-not-allowed disabled:opacity-50"
       />
       <SlashCommandPopover
         isOpen={slashCommand.state.isOpen}

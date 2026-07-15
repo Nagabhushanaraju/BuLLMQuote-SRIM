@@ -19,12 +19,11 @@ if (!container) {
 
 const root = createRoot(container);
 
-initI18n().then(() => {
-  root.render(
-    <StrictMode>
-      <AppMotionConfig>
-        <RouterProvider router={router} />
-      </AppMotionConfig>
-    </StrictMode>,
-  );
-});
+void initI18n();
+root.render(
+  <StrictMode>
+    <AppMotionConfig>
+      <RouterProvider router={router} />
+    </AppMotionConfig>
+  </StrictMode>,
+);

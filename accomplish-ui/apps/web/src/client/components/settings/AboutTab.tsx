@@ -6,6 +6,7 @@ interface AboutTabProps {
 
 export function AboutTab({ appVersion }: AboutTabProps) {
   const { t } = useTranslation('settings');
+  const productVersion = '3.2';
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-card p-6">
@@ -29,7 +30,7 @@ export function AboutTab({ appVersion }: AboutTabProps) {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">{t('about.versionLabel')}</div>
-            <div className="font-medium">{appVersion || t('about.loading')}</div>
+            <div className="font-medium">{productVersion || appVersion || t('about.loading')}</div>
           </div>
           <div>
             <div className="text-sm text-muted-foreground">{t('about.developedBy')}</div>

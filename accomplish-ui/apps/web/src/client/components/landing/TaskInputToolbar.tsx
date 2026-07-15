@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp } from '@phosphor-icons/react';
 import type { useSpeechInput } from '@/hooks/useSpeechInput';
-import { SpeechInputButton } from '@/components/ui/SpeechInputButton';
 import { ModelIndicator } from '@/components/ui/ModelIndicator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getAccomplish } from '@/lib/accomplish';
@@ -59,7 +58,7 @@ export function TaskInputToolbar({
   const buttonTitle = isButtonDisabled ? tooltipText : submitLabel;
 
   return (
-    <div className="flex h-[36px] items-center justify-between pl-3 pr-2 mb-2">
+    <div className="flex h-[40px] items-center justify-between border-t border-border/60 bg-background/40 px-3 py-2 backdrop-blur-sm">
       <div className="flex items-center">{toolbarLeft}</div>
 
       <div className="flex items-center gap-3">
@@ -70,21 +69,6 @@ export function TaskInputToolbar({
             hideWhenNoModel={hideModelWhenNoModel}
           />
         )}
-
-        <SpeechInputButton
-          isRecording={speechInput.isRecording}
-          isTranscribing={speechInput.isTranscribing}
-          recordingDuration={speechInput.recordingDuration}
-          error={speechInput.error}
-          isConfigured={speechInput.isConfigured}
-          disabled={isInputDisabled}
-          onStartRecording={() => speechInput.startRecording()}
-          onStopRecording={() => speechInput.stopRecording()}
-          onCancel={() => speechInput.cancelRecording()}
-          onRetry={() => speechInput.retry()}
-          onOpenSettings={onOpenSpeechSettings}
-          size="md"
-        />
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -106,7 +90,7 @@ export function TaskInputToolbar({
                   onSubmit();
                 }}
                 disabled={isButtonDisabled}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-accomplish ${buttonColorClass}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/50 transition-all duration-200 ease-accomplish shadow-sm ${buttonColorClass}`}
               >
                 {isLoading ? (
                   <span className="block h-[10px] w-[10px] rounded-[1.5px] bg-destructive-foreground" />
