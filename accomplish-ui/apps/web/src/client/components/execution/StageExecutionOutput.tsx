@@ -362,7 +362,7 @@ export function StageExecutionOutput({ rpcClient, hitlContextData, rowDataPayloa
       )}
 
       <div className="flex-1 min-h-0 w-full mb-4 bg-background/75 rounded-md border border-border/70 overflow-hidden">
-        {hitlContextData.type === 'preview' ? (
+        {hitlContextData.type === 'preview' && (
           <div className="ag-theme-alpine-dark w-full h-full">
             <AgGridReact
               ref={gridRef}
