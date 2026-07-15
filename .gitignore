@@ -237,6 +237,7 @@ env/
 
 # Data & OS Files
 .DS_Store
+/.srim-local-data/
 *.csv
 *.xlsx
 *.step
