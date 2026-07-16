@@ -6,6 +6,10 @@
  */
 
 /* ── Accent palettes ─────────────────────────────────────────────── */
+:root {
+  --digibull-orange: #FD9B00;
+  --digibull-blue: #0093B6;
+}
 /* green = default brand tokens; listed for completeness/override-safety. */
 [data-accent='green'] {
   --primary: 123 30% 20%;

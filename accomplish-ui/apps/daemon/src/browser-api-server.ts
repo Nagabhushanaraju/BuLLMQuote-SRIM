@@ -16,6 +16,7 @@ import type { WhatsAppDaemonService } from './whatsapp-service.js';
 import type { SkillsService } from './skills-service.js';
 import { log } from './logger.js';
 import { matchTestLogin } from './test-login.js';
+import { getAuthRole, type AuthRole } from './auth/auth-role.js';
 import type { OpenAiOauthManager } from './opencode/auth-openai.js';
 // import { getBomItemsByRfq } from './auth/bom-duckdb-logic.js';
 import { fileMetadataPool } from './db.js';
@@ -74,6 +75,7 @@ interface SessionData {
   userId: string;
   name: string;
   email: string;
+  role: AuthRole;
   createdAt: number;
 }
 
@@ -940,6 +942,7 @@ export class BrowserApiServer {
                     userId: testUser.id,
                     name: testUser.name,
                     email: testUser.email,
+                    role: testUser.role,
                     createdAt: Date.now(),
                   });
                   log.info(`[Auth] Test login: ${testUser.email}`);
@@ -947,7 +950,7 @@ export class BrowserApiServer {
                   res.end(
                     JSON.stringify({
                       sessionToken,
-                      user: { name: testUser.name, email: testUser.email },
+                      user: { name: testUser.name, email: testUser.email, role: testUser.role },
                     }),
                   );
                   return;
@@ -964,6 +967,7 @@ export class BrowserApiServer {
                         userId: pgUser.id,
                         name: pgUser.name,
                         email: pgUser.email,
+                        role: getAuthRole(pgUser.email),
                         createdAt: Date.now(),
                       });
                       log.info(`[Auth] PostgreSQL login: ${pgUser.email}`);
@@ -971,7 +975,7 @@ export class BrowserApiServer {
                       res.end(
                         JSON.stringify({
                           sessionToken,
-                          user: { name: pgUser.name, email: pgUser.email },
+                          user: { name: pgUser.name, email: pgUser.email, role: getAuthRole(pgUser.email) },
                         }),
                       );
                       return;
@@ -1022,12 +1026,13 @@ export class BrowserApiServer {
                   userId: user.id,
                   name: user.name ?? 'NetBird User',
                   email: user.email ?? '',
+                  role: getAuthRole(user.email ?? ''),
                   createdAt: Date.now(),
                 });
                 log.info(`[Auth] User logged in: ${user.email}`);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(
-                  JSON.stringify({ sessionToken, user: { name: user.name, email: user.email } }),
+                  JSON.stringify({ sessionToken, user: { name: user.name, email: user.email, role: getAuthRole(user.email ?? '') } }),
                 );
               } catch (e) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });

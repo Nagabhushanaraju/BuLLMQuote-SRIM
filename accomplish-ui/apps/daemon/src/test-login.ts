@@ -18,6 +18,7 @@ export interface TestLoginUser {
   id: string;
   name: string;
   email: string;
+  role: 'admin' | 'operator';
 }
 
 export interface TestLoginConfig {
@@ -53,6 +54,7 @@ export function getTestLoginConfig(): TestLoginConfig {
       id: 'test-user-digibull',
       name: 'DigiBull Tester',
       email: 'tester@digibull.ai',
+      role: 'admin',
     },
   };
 }

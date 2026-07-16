@@ -8,13 +8,13 @@ const BRIDGE = BACKEND_URL;
 
 interface Session {
   token: string;
-  user: { name: string; email: string };
+  user: { name: string; email: string; role?: 'admin' | 'operator' };
   createdAt: number;
 }
 
 interface AuthSessionResponse {
   sessionToken?: string;
-  user?: { name: string; email: string };
+  user?: { name: string; email: string; role?: 'admin' | 'operator' };
   error?: string;
 }
 
@@ -35,7 +35,11 @@ export function isLoggedIn(): boolean {
   return getSession() !== null;
 }
 
-export function saveSession(token: string, user: { name: string; email: string }): void {
+export function isAdminSession(): boolean {
+  return getSession()?.user.role === 'admin';
+}
+
+export function saveSession(token: string, user: { name: string; email: string; role?: 'admin' | 'operator' }): void {
   const session: Session = { token, user, createdAt: Date.now() };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
