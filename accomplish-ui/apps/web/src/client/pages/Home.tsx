@@ -85,9 +85,9 @@ export function HomePage() {
                 initial={{ opacity: 0, scale: 0.93, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-                className="mb-4 w-full text-center font-apparat text-[26px] tracking-[-0.03em] text-foreground sm:text-[32px] lg:text-[38px]"
+                className="mb-4 w-full text-center font-apparat font-bold text-[26px] tracking-[-0.03em] text-primary drop-shadow-md sm:text-[32px] lg:text-[38px]"
               >
-                {t('title')}
+                What will your Sourcing Team handle today?
               </motion.h1>
               <div className="mx-auto w-full max-w-[760px]">
                 <motion.div
