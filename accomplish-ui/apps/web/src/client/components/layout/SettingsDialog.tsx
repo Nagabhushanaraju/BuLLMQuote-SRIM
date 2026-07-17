@@ -45,7 +45,7 @@ export function SettingsDialog({
     return (
       <Dialog open={open} onOpenChange={s.handleOpenChange}>
         <DialogContent
-          className="srim-settings-dialog max-w-4xl w-full h-[80vh] max-h-[720px] flex flex-col overflow-hidden p-0"
+          className="srim-settings-dialog srim-shell-surface max-w-5xl w-full h-[82vh] max-h-[760px] flex flex-col overflow-hidden p-0"
           data-testid="settings-dialog"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -63,7 +63,7 @@ export function SettingsDialog({
   return (
     <Dialog open={open} onOpenChange={s.handleOpenChange}>
       <DialogContent
-        className="srim-settings-dialog max-w-4xl w-full h-[80vh] max-h-[720px] flex overflow-hidden p-0"
+        className="srim-settings-dialog srim-shell-surface max-w-5xl w-full h-[82vh] max-h-[760px] flex overflow-hidden p-0"
         data-testid="settings-dialog"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -72,29 +72,38 @@ export function SettingsDialog({
         </DialogHeader>
 
         <LayoutGroup id="srim-settings-navigation">
-        <nav className="w-48 shrink-0 border-r border-border bg-muted/30 p-3 flex flex-col h-full">
+        <nav className="srim-shell-surface-soft flex h-full w-56 shrink-0 flex-col border-r border-border/70 p-3">
           <div className="flex flex-col gap-1 flex-1 overflow-y-auto min-h-0">
-            <div className="px-3 py-2 mb-1 flex items-center gap-2">
+            <div className="mb-2 rounded-2xl border border-border/70 bg-background/55 px-3 py-3">
+              <div className="flex items-center gap-2">
               <img
                 src={logoImage}
                 alt="SRIM"
                 style={{ height: '24px', width: '24px', objectFit: 'contain' }}
               />
-              <span className="text-sm font-bold text-foreground tracking-wide">SRIM</span>
+                <div>
+                  <span className="block text-sm font-semibold text-foreground tracking-wide">SRIM</span>
+                  <span className="block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Customize appearance</span>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="srim-shell-chip srim-shell-chip--primary">CAM 3.0</span>
+                <span className="srim-shell-chip">Powered by DigiBull</span>
+              </div>
             </div>
             {SETTINGS_TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => s.setActiveTab(tab.id)}
                 className={cn(
-                  'relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
+                  'relative flex items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-sm font-medium text-left transition-all',
                   s.activeTab === tab.id
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
+                    ? 'border-primary/20 bg-background/80 text-foreground shadow-sm'
+                    : 'border-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground',
                 )}
                 >
                 {s.activeTab === tab.id && (
-                  <motion.span layoutId="active-settings-tab" className="absolute inset-0 rounded-lg bg-background shadow-sm" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />
+                  <motion.span layoutId="active-settings-tab" className="absolute inset-0 rounded-2xl bg-background/80 shadow-sm" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />
                 )}
                 <span className="relative z-10 flex items-center gap-2.5">
                   <tab.icon className="h-4 w-4 shrink-0" />
@@ -103,10 +112,10 @@ export function SettingsDialog({
                 </button>
             ))}
           </div>
-          <div className="pt-2 border-t border-border shrink-0">
+          <div className="pt-2 border-t border-border/70 shrink-0">
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="flex w-full items-center gap-2.5 rounded-2xl border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
             >
               <SignOut className="h-4 w-4 shrink-0" />
               Sign out
@@ -116,11 +125,16 @@ export function SettingsDialog({
         </LayoutGroup>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-6 pt-5 pb-3">
-            <h3 className="text-sm font-semibold text-foreground">
+          <div className="flex items-center justify-between border-b border-border/60 bg-background/55 px-6 py-4 backdrop-blur-xl">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
               {SETTINGS_TABS.find((tab) => tab.id === s.activeTab)?.labelKey &&
                 t(SETTINGS_TABS.find((tab) => tab.id === s.activeTab)!.labelKey)}
-            </h3>
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Appearance, providers, and local behavior share the same brand tokens.
+              </p>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -128,7 +142,7 @@ export function SettingsDialog({
               <AnimatePresence>
                 {s.closeWarning && (
                   <motion.div
-                    className="rounded-lg border border-warning bg-warning/10 p-4 mb-6"
+                    className="srim-shell-surface-soft rounded-2xl border border-warning/30 p-4 mb-6"
                     variants={settingsVariants.fadeSlide}
                     initial="initial"
                     animate="animate"
@@ -159,7 +173,7 @@ export function SettingsDialog({
                         <div className="mt-3 flex gap-2">
                           <button
                             onClick={s.handleForceClose}
-                            className="rounded-md px-3 py-1.5 text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/80"
+                            className="rounded-xl border border-border/60 bg-background/70 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:border-border hover:bg-background/90"
                           >
                             {t('warnings.closeAnyway')}
                           </button>
@@ -244,7 +258,7 @@ export function SettingsDialog({
                 </div>
                 <button
                   onClick={s.handleDone}
-                  className="flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
                   data-testid="settings-done-button"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

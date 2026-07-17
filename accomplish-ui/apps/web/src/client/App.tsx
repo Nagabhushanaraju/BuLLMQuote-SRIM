@@ -28,6 +28,36 @@ const SettingsDialog = lazy(() => import('./components/layout/SettingsDialog'));
 
 type AppStatus = 'loading' | 'ready' | 'error';
 
+const CONTROL_PANEL_STOPS = [24, 28, 32, 36, 40];
+const OUTPUT_PANEL_STOPS = [32, 36, 40, 44, 48];
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function snapToNearest(value: number, stops: number[]) {
+  return stops.reduce((best, stop) => (Math.abs(stop - value) < Math.abs(best - value) ? stop : best), stops[0]);
+}
+
+function snapPaneRatios(
+  ratios: [number, number, number],
+  side: 'control' | 'output',
+): [number, number, number] {
+  const [left, center, right] = ratios;
+
+  if (side === 'control') {
+    const snappedLeft = clamp(snapToNearest(left, CONTROL_PANEL_STOPS), 22, 42);
+    const nextCenter = clamp(100 - snappedLeft - right, 30, 48);
+    const nextLeft = clamp(100 - nextCenter - right, 22, 42);
+    return [nextLeft, nextCenter, right];
+  }
+
+  const snappedCenter = clamp(snapToNearest(center, OUTPUT_PANEL_STOPS), 30, 48);
+  const nextRight = clamp(100 - left - snappedCenter, 22, 42);
+  const nextCenter = clamp(100 - left - nextRight, 30, 48);
+  return [left, nextCenter, nextRight];
+}
+
 function AnimatedOutlet() {
   // Lazy routes resolve after the first render; do not freeze the initial null outlet.
   return useOutlet();
@@ -241,6 +271,7 @@ export function App() {
       setPaneRatios(next);
     };
     const handlePointerUp = () => {
+      setPaneRatios((current) => snapPaneRatios(current, side));
       dragStateRef.current = null;
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -333,7 +364,7 @@ export function App() {
     );
   }
 
-  // Ready - render canvas view split equally into 3 distinct sections
+  // Ready - render the three-pane canvas with snap-stop dividers.
   const gridTemplateColumns = `minmax(280px, ${paneRatios[0]}fr) 12px minmax(360px, ${paneRatios[1]}fr) 12px minmax(280px, ${paneRatios[2]}fr)`;
 
   return (
@@ -391,31 +422,49 @@ export function App() {
       >
         {/* COLUMN 1: SIDEBAR CONTAINER & WORKFLOW MANAGER */}
         <div className="srim-column-shell relative h-full min-w-0 overflow-hidden">
-          <motion.div
-            className="srim-panel srim-panel-left srim-theme-panel relative h-full flex flex-col justify-between px-5 py-6"
-            style={{ minWidth: 0, width: '100%' }}
-          >
+            <motion.div
+              className="srim-panel srim-panel-left srim-theme-panel relative h-full flex flex-col justify-between px-5 py-6"
+              style={{ minWidth: 0, width: '100%' }}
+            >
 
             {/* Top Panel: Workflow Sequence Control Card */}
             <div className="flex-1 flex flex-col justify-start">
               <div className="mb-5">
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-primary">Live</span>
+                  <span>Drag to resize</span>
+                  <span>Snap points on release</span>
+                </div>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-base font-bold tracking-wide text-primary drop-shadow-sm uppercase">
-                      Your Workflows & Chat History Here!
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                      Workflow rail
                     </h2>
+                    <p className="mt-1 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                      Pick a stage, keep the run visible, and move the rails to suit the task.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="srim-panel-body srim-theme-panel-soft border rounded-xl p-5 shadow-inner">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
-                  RFQ Automation Wizard
-                </h3>
+              <div className="srim-panel-body srim-theme-panel-soft border rounded-2xl p-5 shadow-inner">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                      RFQ intake
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Start with a reference, then move through the workflow.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                    3 panes
+                  </span>
+                </div>
 
                 <div className="mb-4 space-y-1.5">
-                  <label htmlFor="custom-rfq-textbox" className="text-[11px] font-medium tracking-wide text-slate-400 uppercase">
-                    Target RFQ Reference ID
+                  <label htmlFor="custom-rfq-textbox" className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Reference ID
                   </label>
                   <input
                     id="custom-rfq-textbox"
@@ -426,8 +475,8 @@ export function App() {
                       setCustomRfqId(value);
                       validateRfqId(value);
                     }}
-                    placeholder="e.g. RFQ-2026-A"
-                    className="w-full text-xs px-3 py-2.5 rounded-lg border border-border bg-background/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors"
+                    placeholder="RFQ-2026-A"
+                    className="w-full rounded-xl border border-border bg-background/80 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary/60 focus:outline-none"
                   />
                   {rfqValidationMessage && (
                     <p className="srim-theme-muted mt-2 text-xs">
@@ -438,10 +487,10 @@ export function App() {
 
                 <div className="space-y-3">
                   {[
-                    { id: 'intake', name: 'Intake Stage', icon: FileArrowDown },
-                    { id: 'extraction', name: 'Feature Extraction', icon: Cpu },
-                    { id: 'pricing', name: 'Distributor Pricing', icon: Tag },
-                    { id: 'risk', name: 'Feasibility & Risk Analysis', icon: ShieldWarning },
+                    { id: 'intake', name: 'Load RFQ', detail: 'Open a version or start a new intake.', icon: FileArrowDown },
+                    { id: 'extraction', name: 'Extract parts', detail: 'Normalize line items and attributes.', icon: Cpu },
+                    { id: 'pricing', name: 'Check pricing', detail: 'Compare distributor signals and ranges.', icon: Tag },
+                    { id: 'risk', name: 'Review risk', detail: 'Surface exceptions before release.', icon: ShieldWarning },
                   ].map((stage, idx) => {
                     const IconComponent = stage.icon;
                     const isSelected = currentWorkflowStage === stage.id;
@@ -466,17 +515,23 @@ export function App() {
                             }
                           })();
                         }}
-                        className={`srim-stage-button group relative w-full flex items-center space-x-4 overflow-hidden p-3.5 rounded-lg text-left border transition-all duration-200 ${isSelected
-                          ? 'bg-gradient-to-r from-primary/20 via-primary/8 to-transparent border-primary/70 text-primary font-medium shadow-lg shadow-primary/10'
-                          : 'bg-transparent border-border/70 text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.06] hover:text-foreground'
+                        className={`srim-stage-button group relative w-full overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 ${isSelected
+                          ? 'border-primary/60 bg-gradient-to-r from-primary/18 via-primary/8 to-transparent text-foreground shadow-lg shadow-primary/10'
+                          : 'border-border/70 bg-background/30 text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.06] hover:text-foreground'
                           }`}
                       >
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${isSelected ? 'bg-primary/25 border-primary/60 shadow-[0_0_14px_rgba(56,189,248,0.2)]' : 'bg-background/80 border-border group-hover:border-primary/40'
-                          }`}>
-                          {idx + 1}
+                        <div className="flex items-start gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm font-semibold transition-colors ${isSelected ? 'border-primary/50 bg-primary/15 text-primary' : 'border-border bg-background/70 group-hover:border-primary/40'}`}>
+                            {String(idx + 1).padStart(2, '0')}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <IconComponent className={`h-4 w-4 flex-shrink-0 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className="text-sm font-medium tracking-wide">{stage.name}</span>
+                            </div>
+                            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{stage.detail}</p>
+                          </div>
                         </div>
-                        <IconComponent className="h-5 w-5 flex-shrink-0" />
-                        <span className="text-sm tracking-wide">{stage.name}</span>
                       </button>
                     );
                   })}
@@ -485,7 +540,7 @@ export function App() {
             </div>
 
             {/* Bottom Panel: Retaining the Logo Branding & Settings Triggers */}
-            <div className="mt-auto pt-4 border-t border-border/70 flex items-center justify-between sticky bottom-0 bg-background/90 backdrop-blur-sm">
+            <div className="mt-auto flex items-center justify-between border-t border-border/70 bg-background/90 pt-4 backdrop-blur-sm sticky bottom-0">
               <div className="flex items-center space-x-2.5">
                 {/* DigiBull / Accomplish Logo Shell */}
                 <img 
@@ -494,7 +549,7 @@ export function App() {
                   className="h-7 w-auto object-contain" 
                 />
                 <span className="text-xs font-semibold tracking-wider text-foreground/80 font-mono uppercase">
-                  POWERED BY DigiBull AI
+                  POWERED BY DigiBull
                 </span>
               </div>
               
@@ -504,7 +559,7 @@ export function App() {
                   setAuthSettingsTab('general');
                   setAuthSettingsOpen(true);
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/70 text-foreground/80 transition-colors hover:border-primary/40 hover:text-primary shadow-sm"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/70 text-foreground/80 transition-colors hover:border-primary/40 hover:text-primary shadow-sm"
                 title="Open Application Settings"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -527,7 +582,7 @@ export function App() {
 
         {/* COLUMN 2: CENTRAL AI ASSISTANT CHAT CONTAINER — collapses when HITL is active */}
         <div className="srim-column-shell relative h-full min-w-0 overflow-hidden">
-          <motion.div
+            <motion.div
             className="srim-panel srim-chat srim-theme-shell h-full flex flex-col overflow-hidden"
             style={{ minWidth: 0, width: '100%' }}
           >
@@ -548,25 +603,25 @@ export function App() {
 
         {/* COLUMN 3: REAL-TIME OUTPUT STREAM WORKSPACE — expands to 2/3 on HITL */}
         <div className="srim-column-shell relative h-full min-w-0 overflow-hidden">
-          <motion.div
+            <motion.div
             className="srim-panel srim-output srim-theme-panel relative h-full flex flex-col overflow-hidden p-6"
             style={{ minWidth: 0, width: '100%' }}
           >
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-4">
               <div>
-                <h2 className="text-base font-bold tracking-wide text-primary drop-shadow-sm uppercase">
-                  {hitlContext ? '⚠️ Intercept Validation View' : 'See Your Workflows Here'}
+                <h2 className="text-base font-semibold tracking-tight text-primary">
+                  {hitlContext ? 'Review required' : 'Live output'}
                 </h2>
                 <p className="srim-theme-muted text-xs mt-0.5">
                   {hitlContext
-                    ? 'Human-in-the-loop intervention required. Review table item parameters to proceed.'
-                    : 'Real-time compilation logs and structured JSON state schema contract models'
+                    ? 'Check the captured state before the run continues.'
+                    : 'Track the active stage and inspect the current run.'
                   }
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="px-2.5 py-1 text-[10px] font-mono rounded-full bg-primary/10 border border-primary/30 text-primary uppercase tracking-wider shadow-sm shadow-primary/10">
-                  {hitlContext ? 'HITL_HALT' : currentWorkflowStage}
+                  {hitlContext ? 'Review mode' : currentWorkflowStage}
                 </div>
               </div>
             </div>
@@ -593,41 +648,41 @@ export function App() {
                   >
                     {currentWorkflowStage === 'intake' && (
                       <div className="space-y-3">
-                        <p className="text-emerald-400 font-semibold">[INTAKE ACTIVE] Scanning network filesystem nodes...</p>
+                        <p className="text-emerald-400 font-semibold">[INTAKE ACTIVE] Scanning incoming RFQ files...</p>
                         <div className="bg-background/80 p-3 rounded border border-border/70 text-foreground/70 space-y-1">
-                          <div>&gt; Path matching verified: /staged/inbox/bom.xlsx</div>
-                          <div>&gt; Initial RFQ verification hash complete</div>
-                          <div>&gt; Status: Ready for extraction run</div>
+                          <div>&gt; Source matched: /staged/inbox/bom.xlsx</div>
+                          <div>&gt; Reference checksum verified</div>
+                          <div>&gt; Status: Ready for the next step</div>
                         </div>
                       </div>
                     )}
                     {currentWorkflowStage === 'extraction' && (
                       <div className="space-y-3">
-                        <p className="text-blue-400 font-semibold">[EXTRACTION RUNNING] Executing Python contract normalization models...</p>
+                        <p className="text-blue-400 font-semibold">[EXTRACTION RUNNING] Normalizing line items and metadata...</p>
                         <div className="bg-background/80 p-3 rounded border border-border/70 text-foreground/70 space-y-1">
-                          <div>&gt; Component items identified: 42 lines</div>
-                          <div>&gt; Extracting baseline schematic descriptors...</div>
-                          <div>&gt; Appending metadata mapping indices to local session stores</div>
+                          <div>&gt; Parts identified: 42 lines</div>
+                          <div>&gt; Capturing baseline descriptors...</div>
+                          <div>&gt; Writing mapped attributes to the session</div>
                         </div>
                       </div>
                     )}
                     {currentWorkflowStage === 'pricing' && (
                       <div className="space-y-3">
-                        <p className="text-amber-400 font-semibold">[PRICING MATRIX] Fetching remote distributor pipeline catalogs...</p>
+                        <p className="text-amber-400 font-semibold">[PRICING MATRIX] Comparing distributor signals...</p>
                         <div className="bg-background/80 p-3 rounded border border-border/70 text-foreground/70 space-y-1">
-                          <div>&gt; Querying tier-1 wholesale api hooks</div>
-                          <div>&gt; Matching local item indexes against active market parameters</div>
-                          <div>&gt; Variance limit check complete: within acceptable margin profile</div>
+                          <div>&gt; Querying active supply sources</div>
+                          <div>&gt; Matching items against market ranges</div>
+                          <div>&gt; Margin profile within tolerance</div>
                         </div>
                       </div>
                     )}
                     {currentWorkflowStage === 'risk' && (
                       <div className="space-y-3">
-                        <p className="text-purple-400 font-semibold">[RISK MATRIX] Evaluating global ITAR tracking records...</p>
+                        <p className="text-purple-400 font-semibold">[RISK MATRIX] Checking review and compliance signals...</p>
                         <div className="bg-background/80 p-3 rounded border border-border/70 text-foreground/70 space-y-1">
-                          <div>&gt; Checking restricted manufacturer registry indexes</div>
-                          <div>&gt; Conflict matching loop finished smoothly</div>
-                          <div>&gt; Final structural integrity check rating status: Cleared (Green)</div>
+                          <div>&gt; Restricted source list checked</div>
+                          <div>&gt; Conflict matching complete</div>
+                          <div>&gt; Final status: Cleared</div>
                         </div>
                       </div>
                     )}
